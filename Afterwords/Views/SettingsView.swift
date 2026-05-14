@@ -18,7 +18,7 @@ struct SettingsView: View {
     private func GeneralTab() -> some View {
         Form {
             Toggle("Launch at Login", isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) { _, newValue in
+                .onChange(of: launchAtLogin) { newValue in
                     updateLaunchAtLogin(newValue)
                 }
                 .help("Automatically open Afterwords when you log in")

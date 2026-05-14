@@ -44,7 +44,7 @@ final class CLIExecutor: ObservableObject {
         process.arguments = ["-l", "-c", "which afterwords"]
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = FileHandle.nullFile
+        process.standardError = FileHandle.nullDevice
 
         do {
             try process.run()
@@ -128,7 +128,7 @@ final class CLIExecutor: ObservableObject {
                 try process.run()
                 process.waitUntilExit()
 
-                let output = String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                let _ = String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
                 let errorOutput = String(data: stderr.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 
                 await MainActor.run {
