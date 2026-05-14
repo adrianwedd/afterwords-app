@@ -1,0 +1,46 @@
+name: Afterwords
+options:
+  bundleIdPrefix: com.afterwords
+  deploymentTarget:
+    macOS: "13.0"
+  minimumXcodeGenVersion: "2.30.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    SWIFT_VERSION: "5.9"
+    CODE_SIGN_ID: ""
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  Afterwords:
+    type: application
+    platform: macOS
+    sources:
+      - Afterwords
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.afterwords.app
+        INFOPLIST_FILE: Afterwords/Info.plist
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        ENABLE_APP_SANDBOX: NO
+        CODE_SIGN_ENTITLEMENTS: Afterwords/Afterwords.entitlements
+        LSUIElement: YES
+    entitlements:
+      path: Afterwords/Afterwords.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+
+  AfterwordsTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - AfterwordsTests
+    dependencies:
+      - target: Afterwords
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.afterwords.app.tests
+        MACOSX_DEPLOYMENT_TARGET: "13.0"

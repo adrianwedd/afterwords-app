@@ -1,0 +1,48 @@
+import XCTest
+@testable import Afterwords
+
+final class HealthInfoTests: XCTestCase {
+
+    func testDecoding() throws {
+        let json = """
+        {
+            "status": "ok",
+            "loaded_backends": [
+                {"name": "chatterbox", "supported_langs": ["en", "es"]},
+                {"name": "qwen3-0.6b", "supported_langs": ["en"]}
+            ],
+            "voices": ["galadriel", "picard"]
+        }
+        """.data(using: .utf8)!
+
+        let info = try JSONDecoder().decode(HealthInfo.self, from: json)
+        XCTAssertEqual(info.status, "ok")
+        XCTAssertEqual(info.loadedBackends.count, 2)
+        XCTAssertEqual(info.loadedBackends[0].name, "chatterbox")
+        XCTAssertEqual(info.loadedBackends[0].supportedLangs, ["en", "es"])
+        XCTAssertEqual(info.voices, ["galadriel", "picard"])
+    }
+
+    func testEncodingRoundTrip() throws {
+        let info = HealthInfo(
+            status: "ok",
+            loadedBackends: [
+                HealthInfo.BackendInfo(name: "chatterbox", supportedLangs: ["en"])
+            ],
+            voices: ["galadriel"]
+        )
+        let data = try JSONEncoder().encode(info)
+        let decoded = try JSONDecoder().decode(HealthInfo.self, from: data)
+        XCTAssertEqual(decoded, info)
+    }
+
+    func testEmptyBackendsAndVoices() throws {
+        let json = """
+        {"status": "ok", "loaded_backends": [], "voices": []}
+        """.data(using: .utf8)!
+
+        let info = try JSONDecoder().decode(HealthInfo.self, from: json)
+        XCTAssertTrue(info.loadedBackends.isEmpty)
+        XCTAssertTrue(info.voices.isEmpty)
+    }
+}
