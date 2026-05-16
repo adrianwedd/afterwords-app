@@ -139,10 +139,10 @@ struct VoiceListView: View {
                 if !preferredVoice.isEmpty {
                     Text("Default: ")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     + Text(preferredVoice)
                         .font(.caption.monospaced())
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                 }
             }
             Text("Click to play a sample. Double-click to set as default.")
