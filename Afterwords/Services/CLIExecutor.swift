@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import os
 
@@ -117,7 +118,11 @@ final class CLIExecutor: ObservableObject {
     func startServer() { run(["start"], timeout: 30) }
     func stopServer() { run(["stop"], timeout: 10) }
     func restartServer() { run(["restart"], timeout: 30) }
-    func openLogs() { run(["logs"], timeout: 10) }
+    func openLogs() {
+        // afterwords logs runs `tail -f` — it never exits and has no terminal to display in.
+        // Open the log file directly in Console.app instead.
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/tmp/claude-tts-server.log"))
+    }
 
     // MARK: - Execution
 
@@ -160,7 +165,9 @@ final class CLIExecutor: ObservableObject {
 
                 await MainActor.run {
                     self.isExecuting = false
-                    if didTimeout.withLock({ $0 }) {
+                    if didTimeout.withLock({ $0 }) && process.terminationStatus != 0 {
+                        // terminationStatus != 0 guards against the narrow race where the watchdog
+                        // sets didTimeout just before the process exits cleanly (status 0).
                         self.lastError = "Command timed out after \(Int(timeout))s"
                     } else if process.terminationStatus != 0 {
                         self.lastError = errorOutput.isEmpty

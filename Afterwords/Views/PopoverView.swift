@@ -25,6 +25,7 @@ struct PopoverView: View {
                 .tint(.green)
 
                 Button {
+                    guard !cliExecutor.isExecuting else { return }
                     cliExecutor.stopServer()
                     healthMonitor.notifyStopAttempt()
                 } label: {
