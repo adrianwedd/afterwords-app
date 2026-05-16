@@ -10,6 +10,7 @@ final class HealthMonitorTests: XCTestCase {
     override func setUp() {
         super.setUp()
         UserDefaults.standard.removeObject(forKey: "serverPort")
+        UserDefaults.standard.removeObject(forKey: "autoStartServer")
         executor = CLIExecutor()
         monitor = HealthMonitor(cliExecutor: executor)
     }
@@ -17,6 +18,7 @@ final class HealthMonitorTests: XCTestCase {
     @MainActor
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: "serverPort")
+        UserDefaults.standard.removeObject(forKey: "autoStartServer")
         monitor = nil
         executor = nil
         super.tearDown()
@@ -84,6 +86,48 @@ final class HealthMonitorTests: XCTestCase {
         monitor.notifyStartAttempt()
         // After start, state should be .starting
         XCTAssertTrue(monitor.state.isStarting)
+    }
+
+    // MARK: - Auto-start on first confirmed-stopped poll
+
+    @MainActor
+    func testAutoStartNotTriggeredWhenDisabled() {
+        UserDefaults.standard.set(false, forKey: "autoStartServer")
+        monitor.simulateHealthResult(error: "connection refused")
+        // autoStart is off — state must remain .stopped, not .starting
+        XCTAssertEqual(monitor.state, .stopped)
+    }
+
+    @MainActor
+    func testAutoStartTriggeredOnFirstStoppedPoll() {
+        UserDefaults.standard.set(true, forKey: "autoStartServer")
+        monitor.simulateHealthResult(error: "connection refused")
+        // autoStart is on — first poll confirmed stopped, so state should be .starting
+        XCTAssertTrue(monitor.state.isStarting,
+            "Expected .starting after auto-start, got \(monitor.state)")
+    }
+
+    @MainActor
+    func testAutoStartNotTriggeredOnSubsequentPolls() {
+        UserDefaults.standard.set(true, forKey: "autoStartServer")
+        // First poll: triggers auto-start → .starting
+        monitor.simulateHealthResult(error: "connection refused")
+        XCTAssertTrue(monitor.state.isStarting)
+        // User stops the server
+        monitor.notifyStopAttempt()
+        XCTAssertEqual(monitor.state, .stopped)
+        // Second poll: must NOT re-trigger auto-start (hasCompletedFirstPoll is already true)
+        monitor.simulateHealthResult(error: "connection refused")
+        XCTAssertEqual(monitor.state, .stopped)
+    }
+
+    @MainActor
+    func testAutoStartNotTriggeredWhenServerAlreadyRunning() {
+        UserDefaults.standard.set(true, forKey: "autoStartServer")
+        let info = HealthInfo(status: "ok", loadedBackends: [], voices: [])
+        monitor.simulateHealthResult(info: info)
+        // Server was already running — state is .running, not .starting
+        XCTAssertTrue(monitor.state.isRunning)
     }
 
     // MARK: - Consecutive Failure Tracking

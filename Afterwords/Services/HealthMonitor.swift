@@ -37,6 +37,7 @@ final class HealthMonitor: ObservableObject {
     private var timer: Timer?
     private var consecutiveFailures = 0
     private var startAttemptDate: Date?
+    private var hasCompletedFirstPoll = false
 
     init(cliExecutor: CLIExecutor) {
         self.cliExecutor = cliExecutor
@@ -75,6 +76,18 @@ final class HealthMonitor: ObservableObject {
         state = .stopped
         consecutiveFailures = 0
         startAttemptDate = nil
+    }
+
+    // MARK: - Testing
+
+    /// Simulate a health-check result. Exposed for unit tests that cannot
+    /// drive URLSession; not intended for production call sites.
+    func simulateHealthResult(info: HealthInfo? = nil, error: String? = nil) {
+        if let info {
+            handleHealthSuccess(info)
+        } else {
+            handleHealthFailure(error: error ?? "connection refused")
+        }
     }
 
     // MARK: - Polling
@@ -136,6 +149,7 @@ final class HealthMonitor: ObservableObject {
     private func handleHealthSuccess(_ info: HealthInfo) {
         consecutiveFailures = 0
         startAttemptDate = nil
+        hasCompletedFirstPoll = true
         state = .running(info)
     }
 
@@ -162,8 +176,14 @@ final class HealthMonitor: ObservableObject {
             // If not enough failures yet, keep polling at normal rate
 
         case .stopped:
-            // Server was stopped, health failure is expected
-            break
+            // Server was stopped, health failure is expected.
+            // On first confirmed-stopped result, honour the auto-start preference.
+            if !hasCompletedFirstPoll,
+               UserDefaults.standard.bool(forKey: "autoStartServer") {
+                cliExecutor.startServer()
+                notifyStartAttempt()
+            }
+            hasCompletedFirstPoll = true
 
         case .error:
             // Already in error state, no change needed
