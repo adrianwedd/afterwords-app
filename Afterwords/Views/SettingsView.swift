@@ -60,11 +60,16 @@ struct SettingsView: View {
                     .frame(width: 260)
                 Button("Auto-detect") {
                     Task {
-                        guard !isAutoDetecting else { return }
                         isAutoDetecting = true
                         defer { isAutoDetecting = false }
                         let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
-                        if !Task.isCancelled, let path { cliPathOverride = path }
+                        guard !Task.isCancelled, let path else { return }
+                        cliPathOverride = path
+                        // Keep the Detected CLI row in sync — both rows call the same
+                        // detectCLIPath() function, so a successful auto-detect is also
+                        // the definitive answer for what's on the system PATH.
+                        detectedCLIPath = path
+                        cliDetectionComplete = true
                     }
                 }
                 .disabled(isAutoDetecting)
