@@ -44,3 +44,4 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.afterwords.app.tests
         MACOSX_DEPLOYMENT_TARGET: "13.0"
+        GENERATE_INFOPLIST_FILE: YES
