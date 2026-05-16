@@ -63,12 +63,16 @@ struct SettingsView: View {
                         isAutoDetecting = true
                         defer { isAutoDetecting = false }
                         let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
-                        guard !Task.isCancelled, let path else { return }
-                        cliPathOverride = path
-                        // Keep the Detected CLI row in sync — both rows call the same
-                        // detectCLIPath() function, so a successful auto-detect is also
-                        // the definitive answer for what's on the system PATH.
-                        detectedCLIPath = path
+                        guard !Task.isCancelled else { return }
+                        if let path {
+                            cliPathOverride = path
+                            // Keep the Detected CLI row in sync — both call the same
+                            // detectCLIPath(), so a successful auto-detect is also the
+                            // definitive answer for what's on the system PATH.
+                            detectedCLIPath = path
+                        }
+                        // Always mark detection complete so the row shows "Not found"
+                        // rather than staying on "Detecting…" when the binary is absent.
                         cliDetectionComplete = true
                     }
                 }
