@@ -120,11 +120,15 @@ final class CLIExecutor: ObservableObject {
     func restartServer() { run(["restart"], timeout: 30) }
     func openLogs() {
         lastError = nil
-        // afterwords logs runs `tail -f` — it never exits and has no terminal to display in.
-        // Open the log file directly in Console.app instead.
-        let logURL = URL(fileURLWithPath: "/tmp/claude-tts-server.log")
-        if !NSWorkspace.shared.open(logURL) {
+        let logPath = "/tmp/claude-tts-server.log"
+        guard FileManager.default.fileExists(atPath: logPath) else {
             lastError = "Log file not found — start the server to create it"
+            return
+        }
+        // afterwords logs runs `tail -f` — it never exits and has no terminal to display in.
+        // Open the log file in Console.app instead (created by launchd at server start).
+        if !NSWorkspace.shared.open(URL(fileURLWithPath: logPath)) {
+            lastError = "Could not open log file in Console.app"
         }
     }
 
