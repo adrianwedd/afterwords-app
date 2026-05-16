@@ -61,7 +61,7 @@ final class CLIExecutor: ObservableObject {
     /// 1. User-configured override (Settings)
     /// 2. `/usr/local/bin/afterwords` (where setup.sh symlinks it)
     /// 3. `which afterwords` output (run via shell)
-    static func detectCLIPath() -> String? {
+    nonisolated static func detectCLIPath() -> String? {
         // Check the default symlink location first
         let defaultPath = "/usr/local/bin/afterwords"
         if FileManager.default.isExecutableFile(atPath: defaultPath) {

@@ -46,8 +46,9 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 260)
                 Button("Auto-detect") {
-                    if let path = CLIExecutor.detectCLIPath() {
-                        cliPathOverride = path
+                    Task {
+                        let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
+                        if let path { cliPathOverride = path }
                     }
                 }
             }
@@ -76,9 +77,9 @@ struct SettingsView: View {
                 Text(detectedCLIPath ?? "Not found")
                     .foregroundStyle(detectedCLIPath != nil ? .green : .red)
                     .onAppear {
-                        Task.detached {
-                            let path = CLIExecutor.detectCLIPath()
-                            await MainActor.run { detectedCLIPath = path }
+                        Task {
+                            let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
+                            detectedCLIPath = path
                         }
                     }
             }
