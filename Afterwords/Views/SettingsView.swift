@@ -3,9 +3,13 @@ import ServiceManagement
 
 struct SettingsView: View {
     @EnvironmentObject var cliExecutor: CLIExecutor
-    @AppStorage("launchAtLogin") private var launchAtLogin = false
     @AppStorage("autoStartServer") private var autoStartServer = false
     @AppStorage("cliPathOverride") private var cliPathOverride = ""
+
+    // OS registration state — SMAppService is the source of truth, not @AppStorage.
+    @State private var launchAtLogin = false
+    @State private var launchAtLoginLoaded = false
+    @State private var launchAtLoginError: String?
 
     /// Local text buffer for the port TextField. Commits to cliExecutor only
     /// on submit (Enter) or focus loss — typing intermediate values like
@@ -45,11 +49,23 @@ struct SettingsView: View {
     private func GeneralTab() -> some View {
         Form {
             Toggle("Launch at Login", isOn: $launchAtLogin)
+                .disabled(!launchAtLoginLoaded)
                 .onChange(of: launchAtLogin) { newValue in
                     guard !isUpdatingLaunchAtLogin else { return }
                     updateLaunchAtLogin(newValue)
                 }
                 .help("Automatically open Afterwords when you log in")
+                .task {
+                    syncLaunchAtLogin()
+                }
+                .alert("Launch at Login", isPresented: Binding(
+                    get: { launchAtLoginError != nil },
+                    set: { if !$0 { launchAtLoginError = nil } }
+                )) {
+                    Button("OK") { launchAtLoginError = nil }
+                } message: {
+                    Text(launchAtLoginError ?? "")
+                }
 
             Toggle("Auto-start Server", isOn: $autoStartServer)
                 .help("Start the TTS server when Afterwords opens")
@@ -135,6 +151,13 @@ struct SettingsView: View {
         portText = String(cliExecutor.port)
     }
 
+    private func syncLaunchAtLogin() {
+        isUpdatingLaunchAtLogin = true
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+        launchAtLoginLoaded = true
+        isUpdatingLaunchAtLogin = false
+    }
+
     private func updateLaunchAtLogin(_ enabled: Bool) {
         isUpdatingLaunchAtLogin = true
         defer { isUpdatingLaunchAtLogin = false }
@@ -144,9 +167,12 @@ struct SettingsView: View {
             } else {
                 try SMAppService.mainApp.unregister()
             }
+            // Re-read OS state after the call — the status may differ from what we requested
+            // (e.g. .requiresApproval if the user hasn't granted the permission yet).
+            launchAtLogin = SMAppService.mainApp.status == .enabled
         } catch {
-            launchAtLogin = !enabled
-            print("Failed to \(enabled ? "register" : "unregister") launch at login: \(error)")
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+            launchAtLoginError = "Could not \(enabled ? "enable" : "disable") Launch at Login: \(error.localizedDescription)"
         }
     }
 }
