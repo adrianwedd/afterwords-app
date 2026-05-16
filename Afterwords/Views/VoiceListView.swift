@@ -37,11 +37,11 @@ struct VoiceListView: View {
             // after the user closed the Voices window (Gemini QA HIGH).
             samplePlayer.stopPlayback()
         }
-        .onChange(of: voices.count) { newCount in
-            // Server stopped (or restarted with a different set). Drop the
-            // stale selection so the footer doesn't show a vanished voice
-            // as "default".
-            if newCount == 0 {
+        .onChange(of: voices) { _, newVoices in
+            // Clear the selection whenever the voice list changes — covers
+            // both server stop (empty list) and restarts that swap voices
+            // while keeping the same count.
+            if let selected = selectedVoice, !newVoices.contains(selected) {
                 selectedVoice = nil
             }
         }
