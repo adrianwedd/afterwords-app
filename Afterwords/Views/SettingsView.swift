@@ -25,6 +25,15 @@ struct SettingsView: View {
     /// is dismissed and re-shown before the first detection finishes.
     @State private var isDetectingCLIPath = false
 
+    /// Set to true once the first detection task completes (or is cancelled
+    /// and re-tried). Keeps the display in "Detecting…" state until then so
+    /// the user never sees a false red "Not found" on initial render.
+    @State private var cliDetectionComplete = false
+
+    /// Prevents concurrent Auto-detect button taps from spawning multiple
+    /// zsh subprocesses; also grays out the button while in flight.
+    @State private var isAutoDetecting = false
+
     var body: some View {
         TabView {
             GeneralTab()
@@ -51,10 +60,14 @@ struct SettingsView: View {
                     .frame(width: 260)
                 Button("Auto-detect") {
                     Task {
+                        guard !isAutoDetecting else { return }
+                        isAutoDetecting = true
+                        defer { isAutoDetecting = false }
                         let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
-                        if let path { cliPathOverride = path }
+                        if !Task.isCancelled, let path { cliPathOverride = path }
                     }
                 }
+                .disabled(isAutoDetecting)
             }
             .help("Path to the afterwords binary. Leave empty for auto-detection.")
         }
@@ -78,14 +91,20 @@ struct SettingsView: View {
             .help("Sets where the app looks for the server (1024–65535). The server binds to whatever port its launchd plist (or command line) specified — to actually change where the server listens, edit the plist or pass --port separately, then restart it. Changing this alone will make the app's health checks fail until the server is reconfigured.")
 
             LabeledContent("Detected CLI") {
-                Text(detectedCLIPath ?? "Not found")
-                    .foregroundStyle(detectedCLIPath != nil ? .green : .red)
+                Text(cliDetectionComplete ? (detectedCLIPath ?? "Not found") : "Detecting…")
+                    .foregroundStyle(
+                        !cliDetectionComplete ? Color.secondary :
+                        detectedCLIPath != nil ? Color.green : Color.red
+                    )
                     .task {
                         guard detectedCLIPath == nil, !isDetectingCLIPath else { return }
                         isDetectingCLIPath = true
                         defer { isDetectingCLIPath = false }
                         let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
-                        if !Task.isCancelled { detectedCLIPath = path }
+                        if !Task.isCancelled {
+                            detectedCLIPath = path
+                            cliDetectionComplete = true
+                        }
                     }
             }
 
