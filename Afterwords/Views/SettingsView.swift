@@ -13,6 +13,10 @@ struct SettingsView: View {
     @State private var portText: String = ""
     @FocusState private var portFocused: Bool
 
+    /// Resolved once at view init — detectCLIPath() spawns a subprocess and
+    /// must not be called on every SwiftUI render pass.
+    @State private var detectedCLIPath: String? = CLIExecutor.detectCLIPath()
+
     var body: some View {
         TabView {
             GeneralTab()
@@ -64,8 +68,8 @@ struct SettingsView: View {
             .help("Sets where the app looks for the server (1024–65535). The server binds to whatever port its launchd plist (or command line) specified — to actually change where the server listens, edit the plist or pass --port separately, then restart it. Changing this alone will make the app's health checks fail until the server is reconfigured.")
 
             LabeledContent("Detected CLI") {
-                Text(CLIExecutor.detectCLIPath() ?? "Not found")
-                    .foregroundStyle(CLIExecutor.detectCLIPath() != nil ? .green : .red)
+                Text(detectedCLIPath ?? "Not found")
+                    .foregroundStyle(detectedCLIPath != nil ? .green : .red)
             }
 
             LabeledContent("Health Endpoint") {
