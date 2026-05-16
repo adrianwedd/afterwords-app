@@ -9,8 +9,16 @@ struct AfterwordsApp: App {
         // Wire HealthMonitor to read its port from CLIExecutor so a Settings
         // change reaches the next poll without restarting the monitor.
         let executor = CLIExecutor()
+        let monitor = HealthMonitor(cliExecutor: executor)
         _cliExecutor = StateObject(wrappedValue: executor)
-        _healthMonitor = StateObject(wrappedValue: HealthMonitor(cliExecutor: executor))
+        _healthMonitor = StateObject(wrappedValue: monitor)
+
+        // Kick off polling immediately so the status icon reflects the live
+        // server state on app launch (pre-existing server detection). Without
+        // this, the timer never starts until the user clicks Start.
+        Task { @MainActor in
+            monitor.startMonitoring()
+        }
     }
 
     var body: some Scene {

@@ -104,13 +104,18 @@ final class CLIExecutorTests: XCTestCase {
         defer { UserDefaults.standard.removeObject(forKey: "serverPort") }
         let executor = CLIExecutor()
 
+        // Privileged ports (1...1023) clamp to 1024 — the unprivileged server
+        // can't bind there anyway.
+        executor.setPort(80)
+        XCTAssertEqual(executor.port, 1024, "Privileged port 80 should clamp to 1024")
+
         executor.setPort(0)
-        XCTAssertEqual(executor.port, 1, "Port 0 should clamp to lower bound 1")
+        XCTAssertEqual(executor.port, 1024, "Port 0 should clamp to lower bound 1024")
 
         executor.setPort(70000)
         XCTAssertEqual(executor.port, 65535, "Port 70000 should clamp to upper bound 65535")
 
         executor.setPort(-1)
-        XCTAssertEqual(executor.port, 1, "Negative port should clamp to lower bound 1")
+        XCTAssertEqual(executor.port, 1024, "Negative port should clamp to lower bound 1024")
     }
 }

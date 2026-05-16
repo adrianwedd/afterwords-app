@@ -7,6 +7,12 @@ struct SettingsView: View {
     @AppStorage("autoStartServer") private var autoStartServer = false
     @AppStorage("cliPathOverride") private var cliPathOverride = ""
 
+    /// Local text buffer for the port TextField. Commits to cliExecutor only
+    /// on submit (Enter) or focus loss — typing intermediate values like
+    /// empty string or partial digits doesn't trigger clamping.
+    @State private var portText: String = ""
+    @FocusState private var portFocused: Bool
+
     var body: some View {
         TabView {
             GeneralTab()
@@ -45,18 +51,17 @@ struct SettingsView: View {
     private func AdvancedTab() -> some View {
         Form {
             LabeledContent("Server Port") {
-                TextField(
-                    String(CLIExecutor.defaultPort),
-                    value: Binding(
-                        get: { cliExecutor.port },
-                        set: { cliExecutor.setPort($0) }
-                    ),
-                    format: .number.grouping(.never)
-                )
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 100)
+                TextField(String(CLIExecutor.defaultPort), text: $portText)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 100)
+                    .focused($portFocused)
+                    .onAppear { portText = String(cliExecutor.port) }
+                    .onSubmit { commitPortText() }
+                    .onChange(of: portFocused) { focused in
+                        if !focused { commitPortText() }
+                    }
             }
-            .help("Sets where the app looks for the server. The server binds to whatever port its launchd plist (or command line) specified — to actually change where the server listens, edit the plist or pass --port separately, then restart it. Changing this alone will make the app's health checks fail until the server is reconfigured.")
+            .help("Sets where the app looks for the server (1024–65535). The server binds to whatever port its launchd plist (or command line) specified — to actually change where the server listens, edit the plist or pass --port separately, then restart it. Changing this alone will make the app's health checks fail until the server is reconfigured.")
 
             LabeledContent("Detected CLI") {
                 Text(CLIExecutor.detectCLIPath() ?? "Not found")
@@ -71,6 +76,16 @@ struct SettingsView: View {
         }
         .padding()
         .tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }
+    }
+
+    /// Parse the port text buffer and commit it to cliExecutor (which clamps
+    /// to the valid range). On invalid input (non-numeric, empty), revert the
+    /// buffer to the current persisted value so the user sees the rejection.
+    private func commitPortText() {
+        if let parsed = Int(portText) {
+            cliExecutor.setPort(parsed)
+        }
+        portText = String(cliExecutor.port)
     }
 
     private func updateLaunchAtLogin(_ enabled: Bool) {

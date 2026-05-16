@@ -15,9 +15,11 @@ final class CLIExecutor: ObservableObject {
     /// `--port`) separately.
     @Published var port: Int = CLIExecutor.loadPort()
 
-    /// Valid TCP user-port range. Reserved ports below 1024 require root; we
-    /// allow them anyway in case someone runs the server with elevated privs.
-    static let portRange = 1...65535
+    /// Valid TCP port range for the afterwords server. The launchd LaunchAgent
+    /// runs unprivileged, so ports 1...1023 are unbindable without elevation —
+    /// we reject them outright rather than let a user save a port that will
+    /// never work in the shipped deployment.
+    static let portRange = 1024...65535
 
     /// Factory-default port. Used as the loadPort() fallback when no override
     /// is stored, and as the SettingsView TextField placeholder.
