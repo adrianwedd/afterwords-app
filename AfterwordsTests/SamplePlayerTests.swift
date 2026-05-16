@@ -67,4 +67,36 @@ final class SamplePlayerTests: XCTestCase {
         XCTAssertNil(player.playingVoice)
         XCTAssertNil(player.lastError)
     }
+
+    // MARK: - stopPlayback
+
+    @MainActor
+    func testStopPlaybackClearsPlayingVoice() {
+        UserDefaults.standard.removeObject(forKey: "serverPort")
+        defer { UserDefaults.standard.removeObject(forKey: "serverPort") }
+        let executor = CLIExecutor()
+        let player = SamplePlayer(cliExecutor: executor)
+
+        // playSample sets playingVoice immediately (the async fetch happens
+        // off-thread; we test only the synchronous state mutation here).
+        player.playSample(voice: "galadriel")
+        XCTAssertEqual(player.playingVoice, "galadriel")
+
+        player.stopPlayback()
+        XCTAssertNil(player.playingVoice, "stopPlayback must clear playingVoice")
+    }
+
+    @MainActor
+    func testRapidPlaySampleSupersedesPreviousVoice() {
+        UserDefaults.standard.removeObject(forKey: "serverPort")
+        defer { UserDefaults.standard.removeObject(forKey: "serverPort") }
+        let executor = CLIExecutor()
+        let player = SamplePlayer(cliExecutor: executor)
+
+        player.playSample(voice: "galadriel")
+        XCTAssertEqual(player.playingVoice, "galadriel")
+        player.playSample(voice: "picard")
+        XCTAssertEqual(player.playingVoice, "picard",
+            "A second playSample must replace the in-flight playingVoice")
+    }
 }

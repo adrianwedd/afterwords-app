@@ -31,6 +31,20 @@ struct VoiceListView: View {
             footer
         }
         .frame(minWidth: 360, minHeight: 420)
+        .onDisappear {
+            // SamplePlayer is an app-level StateObject; without stopping here,
+            // a fetch-in-flight or in-progress NSSound would keep playing
+            // after the user closed the Voices window (Gemini QA HIGH).
+            samplePlayer.stopPlayback()
+        }
+        .onChange(of: voices.count) { newCount in
+            // Server stopped (or restarted with a different set). Drop the
+            // stale selection so the footer doesn't show a vanished voice
+            // as "default".
+            if newCount == 0 {
+                selectedVoice = nil
+            }
+        }
     }
 
     private var header: some View {
@@ -73,9 +87,14 @@ struct VoiceListView: View {
             List(filteredVoices, id: \.self, selection: $selectedVoice) { voice in
                 row(for: voice)
                     .contentShape(Rectangle())
+                    // Two stacked tap recognizers on the same view caused
+                    // duplicate playSample calls (all 3 QA agents flagged
+                    // this on the previous revision). Now: single-click
+                    // plays the sample; double-click ONLY sets the default
+                    // (single-tap from the first click already started
+                    // playback, so we don't kick a second one).
                     .onTapGesture(count: 2) {
                         preferredVoice = voice
-                        samplePlayer.playSample(voice: voice)
                     }
                     .onTapGesture(count: 1) {
                         selectedVoice = voice

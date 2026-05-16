@@ -4,6 +4,7 @@ struct PopoverView: View {
     @EnvironmentObject var healthMonitor: HealthMonitor
     @EnvironmentObject var cliExecutor: CLIExecutor
     @Environment(\.openWindow) private var openWindow
+    @AppStorage("preferredVoice") private var preferredVoice = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -62,6 +63,12 @@ struct PopoverView: View {
             if case .running(let info) = healthMonitor.state {
                 Text("\(info.loadedBackends.count) backend\(info.loadedBackends.count == 1 ? "" : "s"), \(info.voices.count) voice\(info.voices.count == 1 ? "" : "s")")
                     .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !preferredVoice.isEmpty {
+                Text("Default voice: \(preferredVoice)")
+                    .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
             }
 
