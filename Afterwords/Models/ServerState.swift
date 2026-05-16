@@ -35,7 +35,7 @@ enum ServerState: Equatable {
         case .stopped: return "waveform.circle"
         case .starting: return "waveform.circle"
         case .running: return "waveform.circle.fill"
-        case .error: return "waveform.circle.badge.xmark"
+        case .error: return "waveform.badge.exclamationmark"
         }
     }
 

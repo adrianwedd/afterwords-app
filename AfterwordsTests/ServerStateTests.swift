@@ -43,7 +43,7 @@ final class ServerStateTests: XCTestCase {
         XCTAssertFalse(state.isRunning)
         XCTAssertTrue(state.isError)
         XCTAssertEqual(state.displayName, "Error: Connection refused")
-        XCTAssertEqual(state.statusIconName, "waveform.circle.badge.xmark")
+        XCTAssertEqual(state.statusIconName, "waveform.badge.exclamationmark")
     }
 
     func testEquality() {
