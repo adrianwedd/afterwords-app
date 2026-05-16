@@ -9,18 +9,23 @@ final class CLIExecutor: ObservableObject {
     /// The server port used for health polling and the "Open API" link.
     ///
     /// Persisted in UserDefaults under `"serverPort"`. Setter clamps to a valid
-    /// TCP port range. Changing this does NOT restart the server — the server
-    /// binds to whatever port it was launched with. Users must restart the
-    /// server manually after changing the port here.
+    /// TCP port range. Changing this does NOT reconfigure the server — the
+    /// server binds to whatever port its launchd plist (or command-line) specified.
+    /// To make the server bind to a new port, edit the launchd plist (or pass
+    /// `--port`) separately.
     @Published var port: Int = CLIExecutor.loadPort()
 
     /// Valid TCP user-port range. Reserved ports below 1024 require root; we
     /// allow them anyway in case someone runs the server with elevated privs.
     static let portRange = 1...65535
 
+    /// Factory-default port. Used as the loadPort() fallback when no override
+    /// is stored, and as the SettingsView TextField placeholder.
+    static let defaultPort = 7860
+
     private static func loadPort() -> Int {
         let stored = UserDefaults.standard.integer(forKey: "serverPort")
-        return portRange.contains(stored) ? stored : 7860
+        return portRange.contains(stored) ? stored : defaultPort
     }
 
     /// Update the server port. Clamps to the valid range and persists.

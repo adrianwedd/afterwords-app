@@ -46,7 +46,7 @@ struct SettingsView: View {
         Form {
             LabeledContent("Server Port") {
                 TextField(
-                    "7860",
+                    String(CLIExecutor.defaultPort),
                     value: Binding(
                         get: { cliExecutor.port },
                         set: { cliExecutor.setPort($0) }
@@ -56,7 +56,7 @@ struct SettingsView: View {
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 100)
             }
-            .help("Used for health checks and the API link. The server itself binds to the port it was launched with — restart the server manually after changing this.")
+            .help("Sets where the app looks for the server. The server binds to whatever port its launchd plist (or command line) specified — to actually change where the server listens, edit the plist or pass --port separately, then restart it. Changing this alone will make the app's health checks fail until the server is reconfigured.")
 
             LabeledContent("Detected CLI") {
                 Text(CLIExecutor.detectCLIPath() ?? "Not found")

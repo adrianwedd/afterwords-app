@@ -16,9 +16,10 @@ import Foundation
 final class HealthMonitor: ObservableObject {
     @Published private(set) var state: ServerState = .stopped
 
-    /// The CLIExecutor owns the configurable server port. We read it fresh on
-    /// every poll so a Settings change takes effect on the next health check
-    /// without needing to restart the monitor.
+    /// The CLIExecutor owns the configurable server port. We read it fresh
+    /// at the start of each poll — an in-flight URLSession task still hits
+    /// the old URL until it completes, but the next poll (2–5s later) picks
+    /// up the new value, which is acceptable for human-driven config changes.
     private let cliExecutor: CLIExecutor
 
     /// How often to poll when server is `.running` (seconds).
