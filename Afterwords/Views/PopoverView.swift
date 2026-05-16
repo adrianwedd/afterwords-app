@@ -90,10 +90,21 @@ struct PopoverView: View {
             }
             .disabled(!healthMonitor.state.isRunning)
 
-            Button {
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            } label: {
-                Label("Settings…", systemImage: "gear")
+            Group {
+                if #available(macOS 14.0, *) {
+                    SettingsLink {
+                        Label("Settings…", systemImage: "gear")
+                    }
+                } else {
+                    Button {
+                        NSApp.activate(ignoringOtherApps: true)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                        }
+                    } label: {
+                        Label("Settings…", systemImage: "gear")
+                    }
+                }
             }
         }
         .padding(12)

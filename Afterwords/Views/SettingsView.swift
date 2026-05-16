@@ -116,7 +116,7 @@ struct SettingsView: View {
             }
 
             LabeledContent("Health Endpoint") {
-                Text("http://localhost:\(cliExecutor.port)/health")
+                Text("http://localhost:\(String(cliExecutor.port))/health")
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
             }
