@@ -37,10 +37,12 @@ struct VoiceListView: View {
             // after the user closed the Voices window (Gemini QA HIGH).
             samplePlayer.stopPlayback()
         }
-        .onChange(of: voices) { _, newVoices in
-            // Clear the selection whenever the voice list changes — covers
+        .onChange(of: voices) { newVoices in
+            // Clear the selection whenever the voice set changes — covers
             // both server stop (empty list) and restarts that swap voices
             // while keeping the same count.
+            // Note: uses the pre-macOS-14 onChange(of:perform:) API so the
+            // app remains compatible with the macOS 13 deployment target.
             if let selected = selectedVoice, !newVoices.contains(selected) {
                 selectedVoice = nil
             }
@@ -139,10 +141,10 @@ struct VoiceListView: View {
                 if !preferredVoice.isEmpty {
                     Text("Default: ")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(.secondary)
                     + Text(preferredVoice)
                         .font(.caption.monospaced())
-                        .foregroundStyle(.primary)
+                        .foregroundColor(.primary)
                 }
             }
             Text("Click to play a sample. Double-click to set as default.")
