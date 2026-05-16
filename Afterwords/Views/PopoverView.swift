@@ -19,7 +19,7 @@ struct PopoverView: View {
                 } label: {
                     Label("Start", systemImage: "play.fill")
                 }
-                .disabled(healthMonitor.state.isRunning || healthMonitor.state.isStarting)
+                .disabled(healthMonitor.state.isRunning || healthMonitor.state.isStarting || cliExecutor.isExecuting)
                 .buttonStyle(.borderedProminent)
                 .tint(.green)
 
@@ -29,7 +29,7 @@ struct PopoverView: View {
                 } label: {
                     Label("Stop", systemImage: "stop.fill")
                 }
-                .disabled(!healthMonitor.state.isRunning)
+                .disabled(!healthMonitor.state.isRunning || cliExecutor.isExecuting)
 
                 Button {
                     cliExecutor.restartServer()
@@ -37,7 +37,14 @@ struct PopoverView: View {
                 } label: {
                     Label("Restart", systemImage: "arrow.clockwise")
                 }
-                .disabled(!healthMonitor.state.isRunning)
+                .disabled(!healthMonitor.state.isRunning || cliExecutor.isExecuting)
+            }
+
+            if let error = cliExecutor.lastError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
             }
 
             Divider()
