@@ -158,6 +158,7 @@ struct SettingsView: View {
         isUpdatingLaunchAtLogin = true
         launchAtLogin = SMAppService.mainApp.status == .enabled
         launchAtLoginLoaded = true
+        launchAtLoginError = nil
         isUpdatingLaunchAtLogin = false
     }
 
