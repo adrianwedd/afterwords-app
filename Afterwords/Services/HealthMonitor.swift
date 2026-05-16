@@ -16,8 +16,10 @@ import Foundation
 final class HealthMonitor: ObservableObject {
     @Published private(set) var state: ServerState = .stopped
 
-    /// The port to poll (matches CLIExecutor.port).
-    private let port: Int
+    /// The CLIExecutor owns the configurable server port. We read it fresh on
+    /// every poll so a Settings change takes effect on the next health check
+    /// without needing to restart the monitor.
+    private let cliExecutor: CLIExecutor
 
     /// How often to poll when server is `.running` (seconds).
     private let normalInterval: TimeInterval = 5.0
@@ -35,8 +37,8 @@ final class HealthMonitor: ObservableObject {
     private var consecutiveFailures = 0
     private var startAttemptDate: Date?
 
-    init(port: Int = 7860) {
-        self.port = port
+    init(cliExecutor: CLIExecutor) {
+        self.cliExecutor = cliExecutor
     }
 
     deinit {
@@ -98,7 +100,7 @@ final class HealthMonitor: ObservableObject {
     }
 
     private func checkHealth() {
-        let urlString = "http://localhost:\(port)/health"
+        let urlString = "http://localhost:\(cliExecutor.port)/health"
         guard let url = URL(string: urlString) else { return }
 
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in

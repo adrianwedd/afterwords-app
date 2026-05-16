@@ -4,25 +4,34 @@ import XCTest
 final class HealthMonitorTests: XCTestCase {
 
     var monitor: HealthMonitor!
+    var executor: CLIExecutor!
 
+    @MainActor
     override func setUp() {
         super.setUp()
-        monitor = HealthMonitor(port: 7860)
+        UserDefaults.standard.removeObject(forKey: "serverPort")
+        executor = CLIExecutor()
+        monitor = HealthMonitor(cliExecutor: executor)
     }
 
+    @MainActor
     override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: "serverPort")
         monitor = nil
+        executor = nil
         super.tearDown()
     }
 
     // MARK: - Initial State
 
+    @MainActor
     func testInitialStateIsStopped() {
         XCTAssertEqual(monitor.state, .stopped)
     }
 
     // MARK: - Start Attempt
 
+    @MainActor
     func testNotifyStartAttemptTransitionsToStarting() {
         monitor.notifyStartAttempt()
         if case .starting = monitor.state {
@@ -34,6 +43,7 @@ final class HealthMonitorTests: XCTestCase {
 
     // MARK: - Stop Attempt
 
+    @MainActor
     func testNotifyStopAttemptTransitionsToStopped() {
         monitor.notifyStartAttempt()
         monitor.notifyStopAttempt()
@@ -42,6 +52,7 @@ final class HealthMonitorTests: XCTestCase {
 
     // MARK: - State Transitions
 
+    @MainActor
     func testStopFromRunningGoesToStopped() {
         // Simulate: start → running → stop
         monitor.notifyStartAttempt()
@@ -52,6 +63,7 @@ final class HealthMonitorTests: XCTestCase {
         XCTAssertEqual(monitor.state, .stopped)
     }
 
+    @MainActor
     func testStartFromErrorGoesToStarting() {
         // Simulate: error → start
         // We can't easily set .error without a server, so test the transition
@@ -65,6 +77,7 @@ final class HealthMonitorTests: XCTestCase {
 
     // MARK: - Health Success
 
+    @MainActor
     func testHealthSuccessTransition() {
         // This would require mocking URLSession in a real test
         // For now, verify the state machine logic works in isolation
@@ -75,6 +88,7 @@ final class HealthMonitorTests: XCTestCase {
 
     // MARK: - Consecutive Failure Tracking
 
+    @MainActor
     func testStopResetsConsecutiveFailures() {
         monitor.notifyStartAttempt()
         monitor.notifyStopAttempt()

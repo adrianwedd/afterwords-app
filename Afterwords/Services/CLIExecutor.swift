@@ -6,8 +6,29 @@ import Foundation
 /// `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin` plus any user-configured path prepended.
 @MainActor
 final class CLIExecutor: ObservableObject {
-    /// The server port (currently hardcoded to 7860; will be configurable in Phase 2).
-    let port: Int = 7860
+    /// The server port used for health polling and the "Open API" link.
+    ///
+    /// Persisted in UserDefaults under `"serverPort"`. Setter clamps to a valid
+    /// TCP port range. Changing this does NOT restart the server — the server
+    /// binds to whatever port it was launched with. Users must restart the
+    /// server manually after changing the port here.
+    @Published var port: Int = CLIExecutor.loadPort()
+
+    /// Valid TCP user-port range. Reserved ports below 1024 require root; we
+    /// allow them anyway in case someone runs the server with elevated privs.
+    static let portRange = 1...65535
+
+    private static func loadPort() -> Int {
+        let stored = UserDefaults.standard.integer(forKey: "serverPort")
+        return portRange.contains(stored) ? stored : 7860
+    }
+
+    /// Update the server port. Clamps to the valid range and persists.
+    func setPort(_ newValue: Int) {
+        let clamped = max(Self.portRange.lowerBound, min(Self.portRange.upperBound, newValue))
+        port = clamped
+        UserDefaults.standard.set(clamped, forKey: "serverPort")
+    }
 
     /// Whether a CLI command is currently executing.
     @Published private(set) var isExecuting = false

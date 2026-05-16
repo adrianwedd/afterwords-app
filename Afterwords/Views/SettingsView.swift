@@ -45,10 +45,18 @@ struct SettingsView: View {
     private func AdvancedTab() -> some View {
         Form {
             LabeledContent("Server Port") {
-                Text("\(cliExecutor.port)")
-                    .foregroundStyle(.secondary)
+                TextField(
+                    "7860",
+                    value: Binding(
+                        get: { cliExecutor.port },
+                        set: { cliExecutor.setPort($0) }
+                    ),
+                    format: .number.grouping(.never)
+                )
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 100)
             }
-            .help("Port is currently hardcoded to 7860. Will be configurable in a future version.")
+            .help("Used for health checks and the API link. The server itself binds to the port it was launched with — restart the server manually after changing this.")
 
             LabeledContent("Detected CLI") {
                 Text(CLIExecutor.detectCLIPath() ?? "Not found")
