@@ -76,11 +76,9 @@ struct SettingsView: View {
             LabeledContent("Detected CLI") {
                 Text(detectedCLIPath ?? "Not found")
                     .foregroundStyle(detectedCLIPath != nil ? .green : .red)
-                    .onAppear {
-                        Task {
-                            let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
-                            detectedCLIPath = path
-                        }
+                    .task {
+                        guard detectedCLIPath == nil else { return }
+                        detectedCLIPath = await Task.detached { CLIExecutor.detectCLIPath() }.value
                     }
             }
 
