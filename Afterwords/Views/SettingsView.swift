@@ -64,15 +64,10 @@ struct SettingsView: View {
                         defer { isAutoDetecting = false }
                         let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
                         guard !Task.isCancelled else { return }
-                        if let path {
-                            cliPathOverride = path
-                            // Keep the Detected CLI row in sync — both call the same
-                            // detectCLIPath(), so a successful auto-detect is also the
-                            // definitive answer for what's on the system PATH.
-                            detectedCLIPath = path
-                        }
-                        // Always mark detection complete so the row shows "Not found"
-                        // rather than staying on "Detecting…" when the binary is absent.
+                        if let path { cliPathOverride = path }
+                        // Always write detectedCLIPath (even nil) so a re-detect that
+                        // finds nothing clears a previously-green stale path.
+                        detectedCLIPath = path
                         cliDetectionComplete = true
                     }
                 }
@@ -106,7 +101,10 @@ struct SettingsView: View {
                         detectedCLIPath != nil ? Color.green : Color.red
                     )
                     .task {
-                        guard detectedCLIPath == nil, !isDetectingCLIPath else { return }
+                        // Gate on cliDetectionComplete (not detectedCLIPath == nil) so
+                        // a "not found" result (nil path, completion flag true) doesn't
+                        // re-probe on every subsequent tab switch.
+                        guard !cliDetectionComplete, !isDetectingCLIPath else { return }
                         isDetectingCLIPath = true
                         defer { isDetectingCLIPath = false }
                         let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
