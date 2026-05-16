@@ -21,6 +21,10 @@ struct SettingsView: View {
     /// launchAtLogin inside updateLaunchAtLogin's catch block.
     @State private var isUpdatingLaunchAtLogin = false
 
+    /// Prevents concurrent detectCLIPath() subprocesses when the Advanced tab
+    /// is dismissed and re-shown before the first detection finishes.
+    @State private var isDetectingCLIPath = false
+
     var body: some View {
         TabView {
             GeneralTab()
@@ -77,8 +81,11 @@ struct SettingsView: View {
                 Text(detectedCLIPath ?? "Not found")
                     .foregroundStyle(detectedCLIPath != nil ? .green : .red)
                     .task {
-                        guard detectedCLIPath == nil else { return }
-                        detectedCLIPath = await Task.detached { CLIExecutor.detectCLIPath() }.value
+                        guard detectedCLIPath == nil, !isDetectingCLIPath else { return }
+                        isDetectingCLIPath = true
+                        defer { isDetectingCLIPath = false }
+                        let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
+                        if !Task.isCancelled { detectedCLIPath = path }
                     }
             }
 
