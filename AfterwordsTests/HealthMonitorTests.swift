@@ -55,7 +55,7 @@ final class HealthMonitorTests: XCTestCase {
     // MARK: - State Transitions
 
     @MainActor
-    func testStopFromRunningGoesToStopped() {
+    func testNotifyStopAttemptFromStartingGoesToStopped() {
         monitor.notifyStartAttempt()
         monitor.notifyStopAttempt()
         XCTAssertEqual(monitor.state, .stopped)
@@ -90,12 +90,12 @@ final class HealthMonitorTests: XCTestCase {
     func testAutoStartNotTriggeredWhenDisabled() {
         UserDefaults.standard.set(false, forKey: "autoStartServer")
         monitor.simulateHealthResult(error: "connection refused")
-        // autoStart is off — state must remain .stopped, not .starting
-        XCTAssertEqual(monitor.state, .stopped)
-        // hasCompletedFirstPoll must be set even when auto-start is disabled,
-        // so a subsequent poll cannot re-arm it.
+        XCTAssertEqual(monitor.state, .stopped, "autoStart off — state must remain .stopped")
+        // Even though defer sets hasCompletedFirstPoll=true on the disabled path,
+        // turning auto-start on NOW and polling again must not re-arm it.
+        UserDefaults.standard.set(true, forKey: "autoStartServer")
         monitor.simulateHealthResult(error: "connection refused")
-        XCTAssertEqual(monitor.state, .stopped, "Second poll with auto-start disabled must not trigger start")
+        XCTAssertEqual(monitor.state, .stopped, "Second poll must not auto-start — hasCompletedFirstPoll already set by defer")
     }
 
     @MainActor
