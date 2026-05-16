@@ -119,9 +119,13 @@ final class CLIExecutor: ObservableObject {
     func stopServer() { run(["stop"], timeout: 10) }
     func restartServer() { run(["restart"], timeout: 30) }
     func openLogs() {
+        lastError = nil
         // afterwords logs runs `tail -f` — it never exits and has no terminal to display in.
         // Open the log file directly in Console.app instead.
-        NSWorkspace.shared.open(URL(fileURLWithPath: "/tmp/claude-tts-server.log"))
+        let logURL = URL(fileURLWithPath: "/tmp/claude-tts-server.log")
+        if !NSWorkspace.shared.open(logURL) {
+            lastError = "Log file not found — start the server to create it"
+        }
     }
 
     // MARK: - Execution
