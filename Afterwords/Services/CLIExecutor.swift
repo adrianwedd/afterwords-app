@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Executes `afterwords` CLI commands via Foundation.Process with explicit PATH injection.
 ///
@@ -113,30 +114,16 @@ final class CLIExecutor: ObservableObject {
 
     // MARK: - Server Lifecycle Commands
 
-    func startServer() {
-        lastError = nil
-        run(["start"], timeout: 30)
-    }
-
-    func stopServer() {
-        lastError = nil
-        run(["stop"], timeout: 10)
-    }
-
-    func restartServer() {
-        lastError = nil
-        run(["restart"], timeout: 30)
-    }
-
-    func openLogs() {
-        lastError = nil
-        run(["logs"], timeout: 10)
-    }
+    func startServer() { run(["start"], timeout: 30) }
+    func stopServer() { run(["stop"], timeout: 10) }
+    func restartServer() { run(["restart"], timeout: 30) }
+    func openLogs() { run(["logs"], timeout: 10) }
 
     // MARK: - Execution
 
     private func run(_ arguments: [String], timeout: TimeInterval = 30) {
         guard !isExecuting else { return }
+        lastError = nil
         isExecuting = true
 
         Task.detached { [cliPath = resolvedCLIPath, path = resolvedPATH] in
@@ -158,8 +145,11 @@ final class CLIExecutor: ObservableObject {
                 try process.run()
 
                 // Kill the subprocess after the deadline so isExecuting can never stay true forever.
+                // OSAllocatedUnfairLock provides safe cross-Task signalling without a data race.
+                let didTimeout = OSAllocatedUnfairLock(initialState: false)
                 let watchdog = Task { [process] in
                     try await Task.sleep(for: .seconds(timeout))
+                    didTimeout.withLock { $0 = true }
                     process.terminate()
                 }
                 process.waitUntilExit()
@@ -170,7 +160,9 @@ final class CLIExecutor: ObservableObject {
 
                 await MainActor.run {
                     self.isExecuting = false
-                    if process.terminationStatus != 0 {
+                    if didTimeout.withLock({ $0 }) {
+                        self.lastError = "Command timed out after \(Int(timeout))s"
+                    } else if process.terminationStatus != 0 {
                         self.lastError = errorOutput.isEmpty
                             ? "Command failed with exit code \(process.terminationStatus)"
                             : errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -14,6 +14,7 @@ struct PopoverView: View {
 
             HStack(spacing: 8) {
                 Button {
+                    guard !cliExecutor.isExecuting else { return }
                     cliExecutor.startServer()
                     healthMonitor.notifyStartAttempt()
                 } label: {
@@ -32,6 +33,7 @@ struct PopoverView: View {
                 .disabled(!healthMonitor.state.isRunning || cliExecutor.isExecuting)
 
                 Button {
+                    guard !cliExecutor.isExecuting else { return }
                     cliExecutor.restartServer()
                     healthMonitor.notifyStartAttempt()
                 } label: {
@@ -46,7 +48,6 @@ struct PopoverView: View {
                     .foregroundStyle(.red)
                     .lineLimit(2)
                     .truncationMode(.tail)
-                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Divider()
