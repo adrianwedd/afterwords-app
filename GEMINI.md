@@ -21,7 +21,7 @@ The application delegates the lifecycle of the server directly to the `afterword
 
 # Building and Running
 
-The project uses a `Makefile` and `XcodeGen` to manage the `.xcodeproj` file, which is *not* committed to version control.
+The project uses a `Makefile` and `XcodeGen` to manage `Afterwords.xcodeproj/project.pbxproj`. The `project.pbxproj` is committed to version control. Use `make project` to regenerate it from `project.yml`. Direct hand-edits to the Xcode project are only for intentional out-of-XcodeGen changes.
 
 **Prerequisites:**
 - Xcode 15.0+
