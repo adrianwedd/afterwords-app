@@ -1,4 +1,5 @@
 import XCTest
+import AppKit
 @testable import Afterwords
 
 final class ServerStateTests: XCTestCase {
@@ -26,7 +27,7 @@ final class ServerStateTests: XCTestCase {
         let info = HealthInfo(
             status: "ok",
             loadedBackends: [
-                HealthInfo.BackendInfo(name: "chatterbox", supportedLangs: ["en", "es"])
+                HealthInfo.BackendInfo(name: "qwen3-0.6b", supportedLangs: ["en", "es"])
             ],
             voices: ["galadriel", "picard"]
         )
@@ -44,6 +45,17 @@ final class ServerStateTests: XCTestCase {
         XCTAssertTrue(state.isError)
         XCTAssertEqual(state.displayName, "Error: Connection refused")
         XCTAssertEqual(state.statusIconName, "waveform.badge.exclamationmark")
+    }
+
+    func testAllStatusIconNamesResolveToImages() {
+        let date = Date()
+        let info = HealthInfo(status: "ok", loadedBackends: [], voices: [])
+        let states: [ServerState] = [.stopped, .starting(since: date), .running(info), .error(message: "x")]
+        for state in states {
+            let name = state.statusIconName
+            let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)
+            XCTAssertNotNil(image, "SF Symbol '\(name)' is unavailable on this OS — icon will be invisible")
+        }
     }
 
     func testEquality() {

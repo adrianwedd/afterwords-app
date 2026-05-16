@@ -18,20 +18,14 @@ struct StatusView: View {
 
     @ViewBuilder
     private var statusIcon: some View {
-        switch healthMonitor.state {
-        case .stopped:
-            Image(systemName: "waveform.circle")
-                .foregroundStyle(.secondary)
-        case .starting:
-            Image(systemName: "waveform.circle")
-                .foregroundStyle(.yellow)
-        case .running:
-            Image(systemName: "waveform.circle.fill")
-                .foregroundStyle(.green)
-        case .error:
-            Image(systemName: "waveform.circle.badge.xmark")
-                .foregroundStyle(.red)
+        let color: Color = switch healthMonitor.state {
+        case .stopped: .secondary
+        case .starting: .yellow
+        case .running: .green
+        case .error: .red
         }
+        Image(systemName: healthMonitor.state.statusIconName)
+            .foregroundStyle(color)
     }
 
     @ViewBuilder
