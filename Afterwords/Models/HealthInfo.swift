@@ -25,6 +25,12 @@ struct HealthInfo: Equatable, Codable {
         case voices
     }
 
+    init(status: String, loadedBackends: [BackendInfo], voices: [String]) {
+        self.status = status
+        self.loadedBackends = loadedBackends
+        self.voices = voices
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         status = try container.decode(String.self, forKey: .status)

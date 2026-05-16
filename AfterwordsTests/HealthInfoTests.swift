@@ -7,10 +7,10 @@ final class HealthInfoTests: XCTestCase {
         let json = """
         {
             "status": "ok",
-            "loaded_backends": [
-                {"name": "chatterbox", "supported_langs": ["en", "es"]},
-                {"name": "qwen3-0.6b", "supported_langs": ["en"]}
-            ],
+            "loaded_backends": {
+                "chatterbox": {"supported_langs": ["en", "es"]},
+                "qwen3-0.6b": {"supported_langs": ["en"]}
+            },
             "voices": ["galadriel", "picard"]
         }
         """.data(using: .utf8)!
@@ -18,6 +18,7 @@ final class HealthInfoTests: XCTestCase {
         let info = try JSONDecoder().decode(HealthInfo.self, from: json)
         XCTAssertEqual(info.status, "ok")
         XCTAssertEqual(info.loadedBackends.count, 2)
+        // sorted by name: chatterbox < qwen3-0.6b
         XCTAssertEqual(info.loadedBackends[0].name, "chatterbox")
         XCTAssertEqual(info.loadedBackends[0].supportedLangs, ["en", "es"])
         XCTAssertEqual(info.voices, ["galadriel", "picard"])
@@ -38,7 +39,7 @@ final class HealthInfoTests: XCTestCase {
 
     func testEmptyBackendsAndVoices() throws {
         let json = """
-        {"status": "ok", "loaded_backends": [], "voices": []}
+        {"status": "ok", "loaded_backends": {}, "voices": []}
         """.data(using: .utf8)!
 
         let info = try JSONDecoder().decode(HealthInfo.self, from: json)
