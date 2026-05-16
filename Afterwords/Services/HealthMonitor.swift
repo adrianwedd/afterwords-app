@@ -80,8 +80,9 @@ final class HealthMonitor: ObservableObject {
 
     // MARK: - Testing
 
-    /// Simulate a health-check result. Exposed for unit tests that cannot
-    /// drive URLSession; not intended for production call sites.
+    #if DEBUG
+    /// Simulate a health-check result. For unit tests only — not callable in
+    /// release builds, preventing accidental production use.
     func simulateHealthResult(info: HealthInfo? = nil, error: String? = nil) {
         if let info {
             handleHealthSuccess(info)
@@ -89,6 +90,7 @@ final class HealthMonitor: ObservableObject {
             handleHealthFailure(error: error ?? "connection refused")
         }
     }
+    #endif
 
     // MARK: - Polling
 
@@ -155,6 +157,11 @@ final class HealthMonitor: ObservableObject {
 
     private func handleHealthFailure(error: String) {
         consecutiveFailures += 1
+        // hasCompletedFirstPoll is set unconditionally on every poll result so
+        // that a .starting or .running→.error path can't leave the flag false
+        // and inadvertently re-arm auto-start on a later .stopped poll.
+        // @MainActor serialises all callers, so no lock is needed.
+        defer { hasCompletedFirstPoll = true }
 
         switch state {
         case .starting(let since):
@@ -163,10 +170,8 @@ final class HealthMonitor: ObservableObject {
             if elapsed >= startupTimeout {
                 state = .error(message: "Server did not become healthy within \(Int(startupTimeout))s")
                 startAttemptDate = nil
-                return
             }
-            // Still starting, keep polling at the faster rate
-            return
+            // Still starting (or just timed out) — keep polling at the faster rate
 
         case .running:
             // Was running, now failing. Confirm crash before declaring error.
@@ -176,17 +181,16 @@ final class HealthMonitor: ObservableObject {
             // If not enough failures yet, keep polling at normal rate
 
         case .stopped:
-            // Server was stopped, health failure is expected.
             // On first confirmed-stopped result, honour the auto-start preference.
+            // notifyStartAttempt() before startServer() matches the manual UI path
+            // and ensures state is .starting before the fire-and-forget CLI call.
             if !hasCompletedFirstPoll,
                UserDefaults.standard.bool(forKey: "autoStartServer") {
-                cliExecutor.startServer()
                 notifyStartAttempt()
+                cliExecutor.startServer()
             }
-            hasCompletedFirstPoll = true
 
         case .error:
-            // Already in error state, no change needed
             break
         }
     }

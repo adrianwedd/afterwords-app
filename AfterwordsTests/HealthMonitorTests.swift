@@ -56,11 +56,7 @@ final class HealthMonitorTests: XCTestCase {
 
     @MainActor
     func testStopFromRunningGoesToStopped() {
-        // Simulate: start → running → stop
         monitor.notifyStartAttempt()
-        let info = HealthInfo(status: "ok", loadedBackends: [], voices: [])
-        // Can't directly set state, but we can verify the transition logic
-        // by checking that notifyStopAttempt always goes to .stopped
         monitor.notifyStopAttempt()
         XCTAssertEqual(monitor.state, .stopped)
     }
@@ -96,6 +92,10 @@ final class HealthMonitorTests: XCTestCase {
         monitor.simulateHealthResult(error: "connection refused")
         // autoStart is off — state must remain .stopped, not .starting
         XCTAssertEqual(monitor.state, .stopped)
+        // hasCompletedFirstPoll must be set even when auto-start is disabled,
+        // so a subsequent poll cannot re-arm it.
+        monitor.simulateHealthResult(error: "connection refused")
+        XCTAssertEqual(monitor.state, .stopped, "Second poll with auto-start disabled must not trigger start")
     }
 
     @MainActor
@@ -128,6 +128,31 @@ final class HealthMonitorTests: XCTestCase {
         monitor.simulateHealthResult(info: info)
         // Server was already running — state is .running, not .starting
         XCTAssertTrue(monitor.state.isRunning)
+    }
+
+    @MainActor
+    func testAutoStartFullChainStoppedToRunning() {
+        // Full path: first poll confirms stopped → auto-start → .starting → success poll → .running
+        UserDefaults.standard.set(true, forKey: "autoStartServer")
+        monitor.simulateHealthResult(error: "connection refused")
+        XCTAssertTrue(monitor.state.isStarting, "Auto-start should transition to .starting")
+        let info = HealthInfo(status: "ok", loadedBackends: [], voices: [])
+        monitor.simulateHealthResult(info: info)
+        XCTAssertTrue(monitor.state.isRunning, "Success poll after auto-start should reach .running")
+    }
+
+    @MainActor
+    func testAutoStartNotRearmedAfterStartingPathPoll() {
+        // If the first poll arrives while state is already .starting (user clicked Start
+        // before the first poll completed), hasCompletedFirstPoll must still be set so
+        // that a later .stopped poll cannot trigger a second unwanted auto-start.
+        UserDefaults.standard.set(true, forKey: "autoStartServer")
+        monitor.notifyStartAttempt()                            // user clicked Start first
+        monitor.simulateHealthResult(error: "connection refused") // first poll lands in .starting
+        monitor.notifyStopAttempt()                            // user stops server → .stopped
+        monitor.simulateHealthResult(error: "connection refused") // next .stopped poll
+        XCTAssertEqual(monitor.state, .stopped,
+            "Auto-start must not re-arm after a .starting-path poll set hasCompletedFirstPoll")
     }
 
     // MARK: - Consecutive Failure Tracking
