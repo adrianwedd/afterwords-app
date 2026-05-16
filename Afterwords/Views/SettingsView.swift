@@ -13,9 +13,13 @@ struct SettingsView: View {
     @State private var portText: String = ""
     @FocusState private var portFocused: Bool
 
-    /// Resolved once at view init — detectCLIPath() spawns a subprocess and
-    /// must not be called on every SwiftUI render pass.
-    @State private var detectedCLIPath: String? = CLIExecutor.detectCLIPath()
+    /// Populated asynchronously on first appear — detectCLIPath() spawns a
+    /// subprocess and must not block the main thread.
+    @State private var detectedCLIPath: String? = nil
+
+    /// Guards against the re-entrant onChange call that fires when we revert
+    /// launchAtLogin inside updateLaunchAtLogin's catch block.
+    @State private var isUpdatingLaunchAtLogin = false
 
     var body: some View {
         TabView {
@@ -29,6 +33,7 @@ struct SettingsView: View {
         Form {
             Toggle("Launch at Login", isOn: $launchAtLogin)
                 .onChange(of: launchAtLogin) { newValue in
+                    guard !isUpdatingLaunchAtLogin else { return }
                     updateLaunchAtLogin(newValue)
                 }
                 .help("Automatically open Afterwords when you log in")
@@ -70,7 +75,12 @@ struct SettingsView: View {
             LabeledContent("Detected CLI") {
                 Text(detectedCLIPath ?? "Not found")
                     .foregroundStyle(detectedCLIPath != nil ? .green : .red)
-                    .onAppear { detectedCLIPath = CLIExecutor.detectCLIPath() }
+                    .onAppear {
+                        Task.detached {
+                            let path = CLIExecutor.detectCLIPath()
+                            await MainActor.run { detectedCLIPath = path }
+                        }
+                    }
             }
 
             LabeledContent("Health Endpoint") {
@@ -94,6 +104,8 @@ struct SettingsView: View {
     }
 
     private func updateLaunchAtLogin(_ enabled: Bool) {
+        isUpdatingLaunchAtLogin = true
+        defer { isUpdatingLaunchAtLogin = false }
         do {
             if enabled {
                 try SMAppService.mainApp.register()
