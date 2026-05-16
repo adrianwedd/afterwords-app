@@ -3,6 +3,7 @@ import SwiftUI
 struct PopoverView: View {
     @EnvironmentObject var healthMonitor: HealthMonitor
     @EnvironmentObject var cliExecutor: CLIExecutor
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -63,6 +64,13 @@ struct PopoverView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Button {
+                openWindow(id: "voice-list")
+            } label: {
+                Label("Voices…", systemImage: "list.bullet")
+            }
+            .disabled(!healthMonitor.state.isRunning)
 
             Button {
                 NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)

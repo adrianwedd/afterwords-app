@@ -4,14 +4,17 @@ import SwiftUI
 struct AfterwordsApp: App {
     @StateObject private var cliExecutor: CLIExecutor
     @StateObject private var healthMonitor: HealthMonitor
+    @StateObject private var samplePlayer: SamplePlayer
 
     init() {
         // Wire HealthMonitor to read its port from CLIExecutor so a Settings
         // change reaches the next poll without restarting the monitor.
         let executor = CLIExecutor()
         let monitor = HealthMonitor(cliExecutor: executor)
+        let player = SamplePlayer(cliExecutor: executor)
         _cliExecutor = StateObject(wrappedValue: executor)
         _healthMonitor = StateObject(wrappedValue: monitor)
+        _samplePlayer = StateObject(wrappedValue: player)
 
         // Kick off polling immediately so the status icon reflects the live
         // server state on app launch (pre-existing server detection). Without
@@ -35,5 +38,12 @@ struct AfterwordsApp: App {
             SettingsView()
                 .environmentObject(cliExecutor)
         }
+
+        Window("Voices", id: "voice-list") {
+            VoiceListView()
+                .environmentObject(healthMonitor)
+                .environmentObject(samplePlayer)
+        }
+        .windowResizability(.contentSize)
     }
 }
