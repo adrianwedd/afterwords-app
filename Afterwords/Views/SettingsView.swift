@@ -70,6 +70,7 @@ struct SettingsView: View {
             LabeledContent("Detected CLI") {
                 Text(detectedCLIPath ?? "Not found")
                     .foregroundStyle(detectedCLIPath != nil ? .green : .red)
+                    .onAppear { detectedCLIPath = CLIExecutor.detectCLIPath() }
             }
 
             LabeledContent("Health Endpoint") {
@@ -100,7 +101,7 @@ struct SettingsView: View {
                 try SMAppService.mainApp.unregister()
             }
         } catch {
-            launchAtLogin = false
+            launchAtLogin = !enabled
             print("Failed to \(enabled ? "register" : "unregister") launch at login: \(error)")
         }
     }

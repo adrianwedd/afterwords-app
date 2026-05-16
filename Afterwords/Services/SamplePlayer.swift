@@ -46,10 +46,11 @@ final class SamplePlayer: NSObject, ObservableObject {
 
     /// Synthesize a fixed phrase with the named voice and play it.
     func playSample(voice: String) {
-        latestToken &+= 1
-        let myToken = latestToken
-
+        // stopPlayback() increments latestToken to cancel any prior in-flight request.
+        // Capture myToken AFTER the stop so it equals the new latestToken — capturing
+        // before would leave myToken one behind, making every applyIfCurrent check fail.
         stopPlayback()
+        let myToken = latestToken
 
         let phrase = "Hello. This is the \(voice) voice."
         guard let url = synthesizeURL(text: phrase, voice: voice) else {
