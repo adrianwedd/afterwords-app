@@ -167,9 +167,11 @@ struct SettingsView: View {
             } else {
                 try SMAppService.mainApp.unregister()
             }
-            // Re-read OS state after the call — the status may differ from what we requested
-            // (e.g. .requiresApproval if the user hasn't granted the permission yet).
-            launchAtLogin = SMAppService.mainApp.status == .enabled
+            let status = SMAppService.mainApp.status
+            launchAtLogin = status == .enabled
+            if enabled && status == .requiresApproval {
+                launchAtLoginError = "Afterwords needs permission to open at login. Open System Settings > General > Login Items and enable it there."
+            }
         } catch {
             launchAtLogin = SMAppService.mainApp.status == .enabled
             launchAtLoginError = "Could not \(enabled ? "enable" : "disable") Launch at Login: \(error.localizedDescription)"
