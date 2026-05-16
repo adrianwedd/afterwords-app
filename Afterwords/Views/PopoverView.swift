@@ -45,6 +45,8 @@ struct PopoverView: View {
                     .font(.caption)
                     .foregroundStyle(.red)
                     .lineLimit(2)
+                    .truncationMode(.tail)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Divider()
@@ -94,5 +96,7 @@ struct PopoverView: View {
         }
         .padding(12)
         .frame(minWidth: 240)
+        .animation(.easeInOut(duration: 0.15), value: cliExecutor.lastError)
+        .onAppear { cliExecutor.lastError = nil }
     }
 }

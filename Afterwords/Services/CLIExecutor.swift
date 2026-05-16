@@ -115,26 +115,28 @@ final class CLIExecutor: ObservableObject {
 
     func startServer() {
         lastError = nil
-        run(["start"])
+        run(["start"], timeout: 30)
     }
 
     func stopServer() {
         lastError = nil
-        run(["stop"])
+        run(["stop"], timeout: 10)
     }
 
     func restartServer() {
         lastError = nil
-        run(["restart"])
+        run(["restart"], timeout: 30)
     }
 
     func openLogs() {
-        run(["logs"])
+        lastError = nil
+        run(["logs"], timeout: 10)
     }
 
     // MARK: - Execution
 
-    private func run(_ arguments: [String]) {
+    private func run(_ arguments: [String], timeout: TimeInterval = 30) {
+        guard !isExecuting else { return }
         isExecuting = true
 
         Task.detached { [cliPath = resolvedCLIPath, path = resolvedPATH] in
@@ -154,7 +156,14 @@ final class CLIExecutor: ObservableObject {
 
             do {
                 try process.run()
+
+                // Kill the subprocess after the deadline so isExecuting can never stay true forever.
+                let watchdog = Task { [process] in
+                    try await Task.sleep(for: .seconds(timeout))
+                    process.terminate()
+                }
                 process.waitUntilExit()
+                watchdog.cancel()
 
                 let _ = String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
                 let errorOutput = String(data: stderr.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
