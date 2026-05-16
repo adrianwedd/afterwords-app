@@ -93,6 +93,9 @@ struct SettingsView: View {
         }
         .padding()
         .tabItem { Label("General", systemImage: "gearshape") }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            syncLaunchAtLogin()
+        }
     }
 
     private func AdvancedTab() -> some View {
