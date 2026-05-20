@@ -26,5 +26,9 @@
     <string>Copyright 2026 Adrian Wedd. All rights reserved.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/adrianwedd/afterwords-app/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>FeOcV5PkLWfalq0xh+eMPzFNYDU3rQso95Ix+RvLl9U=</string>
 </dict>
 </plist>

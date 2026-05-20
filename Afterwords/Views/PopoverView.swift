@@ -3,6 +3,7 @@ import SwiftUI
 struct PopoverView: View {
     @EnvironmentObject var healthMonitor: HealthMonitor
     @EnvironmentObject var cliExecutor: CLIExecutor
+    @EnvironmentObject var updaterController: UpdaterController
     @Environment(\.openWindow) private var openWindow
     @AppStorage("preferredVoice") private var preferredVoice = ""
 
@@ -106,6 +107,13 @@ struct PopoverView: View {
                     }
                 }
             }
+
+            Button {
+                updaterController.checkForUpdates()
+            } label: {
+                Label("Check for Updates…", systemImage: "arrow.down.circle")
+            }
+            .disabled(!updaterController.canCheckForUpdates)
         }
         .padding(12)
         .frame(minWidth: 240)

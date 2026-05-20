@@ -5,6 +5,7 @@ struct AfterwordsApp: App {
     @StateObject private var cliExecutor: CLIExecutor
     @StateObject private var healthMonitor: HealthMonitor
     @StateObject private var samplePlayer: SamplePlayer
+    @StateObject private var updaterController = UpdaterController()
 
     init() {
         // Wire HealthMonitor to read its port from CLIExecutor so a Settings
@@ -29,6 +30,7 @@ struct AfterwordsApp: App {
             PopoverView()
                 .environmentObject(healthMonitor)
                 .environmentObject(cliExecutor)
+                .environmentObject(updaterController)
         } label: {
             Image(systemName: healthMonitor.state.statusIconName)
         }
