@@ -108,6 +108,8 @@ struct PopoverView: View {
                 }
             }
 
+            Divider()
+
             Button {
                 updaterController.checkForUpdates()
             } label: {

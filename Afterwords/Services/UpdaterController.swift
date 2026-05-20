@@ -1,6 +1,7 @@
+import Combine
 import Sparkle
 
-final class UpdaterController: ObservableObject {
+@MainActor final class UpdaterController: ObservableObject {
     private let controller: SPUStandardUpdaterController
 
     @Published var canCheckForUpdates = false
@@ -12,6 +13,7 @@ final class UpdaterController: ObservableObject {
             userDriverDelegate: nil
         )
         controller.updater.publisher(for: \.canCheckForUpdates)
+            .receive(on: DispatchQueue.main)
             .assign(to: &$canCheckForUpdates)
     }
 
