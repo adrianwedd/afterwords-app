@@ -35,7 +35,6 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         ENABLE_APP_SANDBOX: NO
         CODE_SIGN_ENTITLEMENTS: Afterwords/Afterwords.entitlements
-        LSUIElement: YES
     entitlements:
       path: Afterwords/Afterwords.entitlements
       properties:

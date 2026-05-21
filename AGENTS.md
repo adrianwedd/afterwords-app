@@ -6,7 +6,7 @@ This is a macOS menu-bar app built with SwiftUI and XcodeGen.
 
 - `Afterwords/` contains the app source.
   - `Views/` holds SwiftUI screens such as `PopoverView.swift`, `SettingsView.swift`, and `VoiceListView.swift`.
-  - `Services/` contains app logic like `CLIExecutor.swift`, `HealthMonitor.swift`, and `SamplePlayer.swift`.
+  - `Services/` contains app logic like `CLIExecutor.swift`, `HealthMonitor.swift`, `SamplePlayer.swift`, and `UpdaterController.swift` (Sparkle 2 auto-update).
   - `Models/` holds lightweight data types such as `HealthInfo.swift` and `ServerState.swift`.
 - `AfterwordsTests/` contains XCTest coverage for the app and service layer.
 - `Afterwords.xcodeproj/project.pbxproj` is committed to git. `make project` regenerates it from `project.yml` via XcodeGen. Edit `project.yml` for structural changes; do not hand-edit `project.pbxproj` unless intentionally changing project metadata outside XcodeGen's control.
@@ -20,6 +20,7 @@ Use the Makefile targets for the standard workflow:
 - `make open` regenerates and opens `Afterwords.xcodeproj` in Xcode.
 - `make build` performs a Debug build with `xcodebuild`.
 - `make test` runs the XCTest suite on macOS.
+- `make dmg` produces an unsigned Release DMG at `build/Release/Afterwords.dmg`.
 - `make clean` removes the generated project and local build output.
 
 ## Coding Style & Naming Conventions
@@ -48,5 +49,6 @@ Use the Makefile targets for the standard workflow:
 
 - The app depends on the external `afterwords` CLI being available on PATH.
 - The project intentionally does not use the App Sandbox because it launches subprocesses.
+- Sparkle 2 (via SPM) is the only third-party dependency. Combine publishers feeding `@MainActor` `@Published` properties must use `.receive(on: DispatchQueue.main)` before `.assign(to:)` — Swift concurrency actors don't auto-dispatch Combine pipelines.
 - Launch-at-login state should read from `SMAppService.mainApp.status`, not a persisted toggle value. If you change `SettingsView.swift`, keep the OS state, UI state, and error handling in sync.
 - `autoStartServer` is separate from login-item registration. Do not conflate the two in code or QA steps.
