@@ -13,6 +13,7 @@ make project    # Regenerate Afterwords.xcodeproj via XcodeGen (required after e
 make build      # Debug build via xcodebuild
 make test       # Run XCTest suite on macOS
 make open       # Regenerate project and open in Xcode
+make dmg        # Release build + unsigned DMG at build/Release/Afterwords.dmg
 make clean      # Remove generated .xcodeproj and build/
 ```
 
@@ -27,9 +28,10 @@ AfterwordsApp (entry point)
   └── Window("Voices") → VoiceListView
 
 Services (all @MainActor ObservableObject, injected via @EnvironmentObject):
-  ├── CLIExecutor   — runs `afterwords` CLI via Foundation.Process with explicit PATH injection
-  ├── HealthMonitor — polls GET /health; owns the ServerState machine
-  └── SamplePlayer  — fetches and plays voice samples via NSSound
+  ├── CLIExecutor        — runs `afterwords` CLI via Foundation.Process with explicit PATH injection
+  ├── HealthMonitor      — polls GET /health; owns the ServerState machine
+  ├── SamplePlayer       — fetches and plays voice samples via NSSound
+  └── UpdaterController  — wraps SPUStandardUpdaterController (Sparkle 2); exposes canCheckForUpdates
 ```
 
 **State machine** (`ServerState` enum):
@@ -54,8 +56,9 @@ Services (all @MainActor ObservableObject, injected via @EnvironmentObject):
 
 - Swift 5.9, macOS 13.0+ deployment target — use `onChange(of:perform:)` (pre-macOS 14 API), not the two-argument form
 - `UpperCamelCase` types, `lowerCamelCase` methods/properties, four-space indentation
-- `@State`/`@EnvironmentObject` for UI state; no third-party dependencies
+- `@State`/`@EnvironmentObject` for UI state; Sparkle 2 (via SPM) is the only third-party dependency
 - All service types are `@MainActor final class`; use `Task.detached` for blocking work then `await MainActor.run` to publish results
+- Combine publishers feeding `@MainActor` `@Published` properties must use `.receive(on: DispatchQueue.main)` before `.assign(to:)` — Swift concurrency actors don't auto-dispatch Combine pipelines
 - Commit messages use conventional scopes: `fix(settings):`, `feat(monitor):`, `test:`, `chore:`
 
 ## Testing
