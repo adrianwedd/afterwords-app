@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#1C1C1A"/>
+
+  <defs>
+    <!-- Clip waveform bars to the lower comma's oval body -->
+    <clipPath id="oval-clip">
+      <ellipse cx="568" cy="522" rx="76" ry="92"/>
+    </clipPath>
+  </defs>
+
+  <!-- ═══════════════════════════════════════════
+       UPPER COMMA — solid #EDE8DF
+       Oval center: (448, 412)
+       ═══════════════════════════════════════════ -->
+
+  <!-- Oval body -->
+  <ellipse cx="448" cy="412" rx="76" ry="92" fill="#EDE8DF"/>
+
+  <!-- Tail: hooks left and down from oval bottom, blunt rounded tip -->
+  <path
+    d="M 422,496
+       C 404,520 381,556 372,587
+       C 368,602 377,615 390,612
+       C 402,609 413,597 424,578
+       C 441,551 459,521 466,496
+       Z"
+    fill="#EDE8DF"/>
+
+  <!-- ═══════════════════════════════════════════
+       LOWER COMMA — dark oval + waveform + solid tail
+       Oval center: (568, 522)  [upper + 120, +110]
+       ═══════════════════════════════════════════ -->
+
+  <!-- Oval body: dark fill, faint outline -->
+  <ellipse
+    cx="568" cy="522"
+    rx="76" ry="92"
+    fill="#1C1C1A"
+    stroke="#EDE8DF"
+    stroke-width="3"/>
+
+  <!-- Tail: same relative shape as upper, solid #EDE8DF -->
+  <path
+    d="M 542,606
+       C 524,630 501,666 492,697
+       C 488,712 497,725 510,722
+       C 522,719 533,707 544,688
+       C 561,661 579,631 586,606
+       Z"
+    fill="#EDE8DF"/>
+
+  <!-- Waveform bars clipped to oval body
+       11 bars, x from 494 to 642 (spacing ~14.8px)
+       Heights follow natural speech amplitude envelope
+       Bars are centered vertically at cy=522            -->
+  <g clip-path="url(#oval-clip)"
+     stroke="#EDE8DF"
+     stroke-width="8"
+     stroke-linecap="round">
+    <!-- bar 1  --> <line x1="494" y1="510" x2="494" y2="534"/>
+    <!-- bar 2  --> <line x1="509" y1="497" x2="509" y2="547"/>
+    <!-- bar 3  --> <line x1="524" y1="485" x2="524" y2="559"/>
+    <!-- bar 4  --> <line x1="539" y1="473" x2="539" y2="571"/>
+    <!-- bar 5  --> <line x1="554" y1="468" x2="554" y2="578"/>
+    <!-- bar 6  --> <line x1="568" y1="464" x2="568" y2="580"/>
+    <!-- bar 7  --> <line x1="583" y1="470" x2="583" y2="576"/>
+    <!-- bar 8  --> <line x1="598" y1="480" x2="598" y2="565"/>
+    <!-- bar 9  --> <line x1="613" y1="491" x2="613" y2="553"/>
+    <!-- bar 10 --> <line x1="628" y1="502" x2="628" y2="542"/>
+    <!-- bar 11 --> <line x1="642" y1="511" x2="642" y2="533"/>
+  </g>
+</svg>
