@@ -45,21 +45,12 @@ final class CLIExecutor: ObservableObject {
     /// The last error from a CLI command, if any.
     @Published var lastError: String?
 
-    /// The asynchronously-detected CLI path, populated once on init. Cached so
-    /// that `run()` never has to spawn `which afterwords` (a login-shell
-    /// subprocess that sources ~/.zshrc) on the MainActor. Nil until detection
-    /// completes; consumers fall back to the hardcoded default.
+    /// The detected CLI path, resolved synchronously on init by probing known
+    /// install locations. Nil if none of the known locations contain the binary.
     @Published private(set) var detectedCLIPath: String?
 
     init() {
-        // Kick off detection in the background so the first user click never
-        // pays for it. The detection itself runs off-MainActor (detectCLIPath
-        // is `nonisolated`) via a child detached task; the assignment hops
-        // back to MainActor through this Task's implicit MainActor inheritance.
-        Task { [weak self] in
-            let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
-            self?.detectedCLIPath = path
-        }
+        detectedCLIPath = CLIExecutor.detectCLIPath()
     }
 
     private let defaultPathDirectories = [

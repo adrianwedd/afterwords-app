@@ -31,6 +31,17 @@ final class CLIExecutorTests: XCTestCase {
         // If not installed, that's also fine (CI environment)
     }
 
+    // MARK: - Synchronous Init
+
+    @MainActor
+    func testDetectedCLIPathSetSynchronouslyOnInit() {
+        // Regression test: async detection left detectedCLIPath nil at first access,
+        // causing autoStartServer to silently use the wrong fallback path on
+        // Homebrew-only installs (/opt/homebrew/bin, not /usr/local/bin).
+        let executor = CLIExecutor()
+        XCTAssertEqual(executor.detectedCLIPath, CLIExecutor.detectCLIPath())
+    }
+
     // MARK: - Execute with Missing Binary
 
     @MainActor

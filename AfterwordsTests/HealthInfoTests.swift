@@ -47,6 +47,60 @@ final class HealthInfoTests: XCTestCase {
         XCTAssertTrue(info.voices.isEmpty)
     }
 
+    func testDecodingTreatsNullVoicesAsEmpty() throws {
+        let json = """
+        {
+            "status": "ok",
+            "loaded_backends": {},
+            "voices": null
+        }
+        """.data(using: .utf8)!
+
+        let info = try JSONDecoder().decode(HealthInfo.self, from: json)
+        XCTAssertTrue(info.voices.isEmpty)
+    }
+
+    func testDecodingTreatsNullLoadedBackendsAsEmpty() throws {
+        let json = """
+        {
+            "status": "ok",
+            "loaded_backends": null,
+            "voices": []
+        }
+        """.data(using: .utf8)!
+
+        let info = try JSONDecoder().decode(HealthInfo.self, from: json)
+        XCTAssertTrue(info.loadedBackends.isEmpty)
+    }
+
+    func testDecodingTreatsOmittedVoicesAsEmpty() throws {
+        let json = """
+        {"status": "ok", "loaded_backends": {}}
+        """.data(using: .utf8)!
+
+        let info = try JSONDecoder().decode(HealthInfo.self, from: json)
+        XCTAssertTrue(info.voices.isEmpty)
+    }
+
+    func testDecodingTreatsOmittedLoadedBackendsAsEmpty() throws {
+        let json = """
+        {"status": "ok", "voices": []}
+        """.data(using: .utf8)!
+
+        let info = try JSONDecoder().decode(HealthInfo.self, from: json)
+        XCTAssertTrue(info.loadedBackends.isEmpty)
+    }
+
+    func testDecodingTreatsAllFieldsNullSimultaneously() throws {
+        let json = """
+        {"status": "ok", "loaded_backends": null, "voices": null}
+        """.data(using: .utf8)!
+
+        let info = try JSONDecoder().decode(HealthInfo.self, from: json)
+        XCTAssertTrue(info.voices.isEmpty)
+        XCTAssertTrue(info.loadedBackends.isEmpty)
+    }
+
     func testDecodingTreatsNullSupportedLangsAsEmpty() throws {
         // A server that emits `null` (or omits the key) for supported_langs
         // must not throw — otherwise a single quirky backend would dump

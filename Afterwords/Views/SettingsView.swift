@@ -17,13 +17,8 @@ struct SettingsView: View {
     @State private var portText: String = ""
     @FocusState private var portFocused: Bool
 
-    /// Populated asynchronously on first appear — detectCLIPath() spawns a
-    /// subprocess and must not block the main thread.
+    /// Populated on first appear by probing known install locations.
     @State private var detectedCLIPath: String? = nil
-
-    /// Guards against the re-entrant onChange call that fires when we revert
-    /// launchAtLogin inside updateLaunchAtLogin's catch block.
-    @State private var isUpdatingLaunchAtLogin = false
 
     /// Prevents concurrent detectCLIPath() subprocesses when the Advanced tab
     /// is dismissed and re-shown before the first detection finishes.
@@ -48,13 +43,16 @@ struct SettingsView: View {
 
     private func GeneralTab() -> some View {
         Form {
-            Toggle("Launch at Login", isOn: $launchAtLogin)
-                .disabled(!launchAtLoginLoaded)
-                .onChange(of: launchAtLogin) { newValue in
-                    guard !isUpdatingLaunchAtLogin else { return }
-                    updateLaunchAtLogin(newValue)
-                }
-                .help("Automatically open Afterwords when you log in")
+            // Binding setter replaces .onChange — programmatic @State writes to
+            // launchAtLogin (from syncLaunchAtLogin/updateLaunchAtLogin) never
+            // trigger the setter, so no re-entrancy guard is needed. Do not add
+            // .onChange(of: launchAtLogin) without one.
+            Toggle("Launch at Login", isOn: Binding(
+                get: { launchAtLogin },
+                set: { updateLaunchAtLogin($0) }
+            ))
+            .disabled(!launchAtLoginLoaded)
+            .help("Automatically open Afterwords when you log in")
                 .task {
                     syncLaunchAtLogin()
                 }
@@ -155,45 +153,27 @@ struct SettingsView: View {
     }
 
     private func syncLaunchAtLogin() {
-        withProgrammaticToggle {
-            launchAtLogin = SMAppService.mainApp.status == .enabled
-            launchAtLoginLoaded = true
-            launchAtLoginError = nil
-        }
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+        launchAtLoginLoaded = true
+        launchAtLoginError = nil
     }
 
     private func updateLaunchAtLogin(_ enabled: Bool) {
-        withProgrammaticToggle {
-            do {
-                if enabled {
-                    try SMAppService.mainApp.register()
-                } else {
-                    try SMAppService.mainApp.unregister()
-                }
-                let status = SMAppService.mainApp.status
-                launchAtLogin = status == .enabled
-                if enabled && status == .requiresApproval {
-                    launchAtLoginError = "Afterwords needs permission to open at login. Open System Settings > General > Login Items and enable it there."
-                }
-            } catch {
-                launchAtLogin = SMAppService.mainApp.status == .enabled
-                launchAtLoginError = "Could not \(enabled ? "enable" : "disable") Launch at Login: \(error.localizedDescription)"
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
             }
-        }
-    }
-
-    /// Run `body` with the re-entrancy guard set, and release the guard on the
-    /// next runloop tick. SwiftUI dispatches `.onChange(of:)` asynchronously
-    /// (typically after the current view-update pass), so a `defer`-released
-    /// guard would already be false by the time onChange dispatches, causing
-    /// our programmatic write to `launchAtLogin` to trigger a recursive
-    /// updateLaunchAtLogin call. Releasing on the next runloop tick guarantees
-    /// the guard is still set when SwiftUI fires the onChange.
-    private func withProgrammaticToggle(_ body: () -> Void) {
-        isUpdatingLaunchAtLogin = true
-        body()
-        DispatchQueue.main.async { [self] in
-            isUpdatingLaunchAtLogin = false
+            let status = SMAppService.mainApp.status
+            launchAtLogin = status == .enabled
+            launchAtLoginError = nil
+            if enabled && status == .requiresApproval {
+                launchAtLoginError = "Afterwords needs permission to open at login. Open System Settings > General > Login Items and enable it there."
+            }
+        } catch {
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+            launchAtLoginError = "Could not \(enabled ? "enable" : "disable") Launch at Login: \(error.localizedDescription)"
         }
     }
 }

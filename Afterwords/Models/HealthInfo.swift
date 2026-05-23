@@ -11,10 +11,10 @@ struct HealthInfo: Equatable, Codable {
     }
 
     // loaded_backends is a dict keyed by backend name — decode manually.
-    // supported_langs is optional so a server emitting `null` (or omitting
-    // the key) decodes as an empty list instead of throwing — keeping a
-    // single quirky backend from forcing the whole HealthMonitor into
-    // .error via "Invalid JSON".
+    // voices, loaded_backends, and supported_langs all use decodeIfPresent so
+    // a server emitting `null` (or omitting the key) decodes as an empty
+    // list/dict instead of throwing — keeping a single quirky field from
+    // forcing the whole HealthMonitor into .error via "Invalid JSON".
     // Other fields the server adds in the future are intentionally ignored.
     private struct RawBackend: Decodable {
         let supportedLangs: [String]?
@@ -39,9 +39,9 @@ struct HealthInfo: Equatable, Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         status = try container.decode(String.self, forKey: .status)
-        voices = try container.decode([String].self, forKey: .voices)
+        voices = try container.decodeIfPresent([String].self, forKey: .voices) ?? []
 
-        let rawDict = try container.decode([String: RawBackend].self, forKey: .loadedBackends)
+        let rawDict = try container.decodeIfPresent([String: RawBackend].self, forKey: .loadedBackends) ?? [:]
         loadedBackends = rawDict.map { name, raw in
             BackendInfo(name: name, supportedLangs: raw.supportedLangs ?? [])
         }.sorted { $0.name < $1.name }
