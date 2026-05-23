@@ -155,30 +155,45 @@ struct SettingsView: View {
     }
 
     private func syncLaunchAtLogin() {
-        isUpdatingLaunchAtLogin = true
-        launchAtLogin = SMAppService.mainApp.status == .enabled
-        launchAtLoginLoaded = true
-        launchAtLoginError = nil
-        isUpdatingLaunchAtLogin = false
+        withProgrammaticToggle {
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+            launchAtLoginLoaded = true
+            launchAtLoginError = nil
+        }
     }
 
     private func updateLaunchAtLogin(_ enabled: Bool) {
+        withProgrammaticToggle {
+            do {
+                if enabled {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+                let status = SMAppService.mainApp.status
+                launchAtLogin = status == .enabled
+                if enabled && status == .requiresApproval {
+                    launchAtLoginError = "Afterwords needs permission to open at login. Open System Settings > General > Login Items and enable it there."
+                }
+            } catch {
+                launchAtLogin = SMAppService.mainApp.status == .enabled
+                launchAtLoginError = "Could not \(enabled ? "enable" : "disable") Launch at Login: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Run `body` with the re-entrancy guard set, and release the guard on the
+    /// next runloop tick. SwiftUI dispatches `.onChange(of:)` asynchronously
+    /// (typically after the current view-update pass), so a `defer`-released
+    /// guard would already be false by the time onChange dispatches, causing
+    /// our programmatic write to `launchAtLogin` to trigger a recursive
+    /// updateLaunchAtLogin call. Releasing on the next runloop tick guarantees
+    /// the guard is still set when SwiftUI fires the onChange.
+    private func withProgrammaticToggle(_ body: () -> Void) {
         isUpdatingLaunchAtLogin = true
-        defer { isUpdatingLaunchAtLogin = false }
-        do {
-            if enabled {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
-            let status = SMAppService.mainApp.status
-            launchAtLogin = status == .enabled
-            if enabled && status == .requiresApproval {
-                launchAtLoginError = "Afterwords needs permission to open at login. Open System Settings > General > Login Items and enable it there."
-            }
-        } catch {
-            launchAtLogin = SMAppService.mainApp.status == .enabled
-            launchAtLoginError = "Could not \(enabled ? "enable" : "disable") Launch at Login: \(error.localizedDescription)"
+        body()
+        DispatchQueue.main.async { [self] in
+            isUpdatingLaunchAtLogin = false
         }
     }
 }
