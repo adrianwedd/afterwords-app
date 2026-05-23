@@ -74,37 +74,27 @@ final class CLIExecutor: ObservableObject {
 
     // MARK: - CLI Discovery
 
-    /// Resolves the path to the `afterwords` binary. Priority:
-    /// 1. User-configured override (Settings)
-    /// 2. `/usr/local/bin/afterwords` (where setup.sh symlinks it)
-    /// 3. `which afterwords` output (run via shell)
+    /// Well-known locations to probe for the `afterwords` binary, in
+    /// preference order. Pure filesystem checks — no subprocess, no shell,
+    /// no .zshrc side effects, deterministic.
+    /// `nonisolated` so detectCLIPath() (also nonisolated) can read it from
+    /// the background detection task without bouncing off MainActor.
+    nonisolated private static let cliSearchPaths = [
+        "/usr/local/bin/afterwords",      // setup.sh symlink
+        "/opt/homebrew/bin/afterwords",   // Apple Silicon Homebrew
+        "/opt/homebrew/sbin/afterwords",
+        "/usr/bin/afterwords",
+    ]
+
+    /// Resolves the path to the `afterwords` binary by probing known
+    /// install locations. Returns nil if none are present; callers fall
+    /// back to a hardcoded default. Users with a binary outside these
+    /// locations should set an explicit override in Settings.
     nonisolated static func detectCLIPath() -> String? {
-        // Check the default symlink location first
-        let defaultPath = "/usr/local/bin/afterwords"
-        if FileManager.default.isExecutableFile(atPath: defaultPath) {
-            return defaultPath
-        }
-
-        // Fall back to `which`
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = ["-l", "-c", "which afterwords"]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-            if process.terminationStatus == 0 {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
-                if let path, !path.isEmpty, FileManager.default.isExecutableFile(atPath: path) {
-                    return path
-                }
+        for path in cliSearchPaths {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                return path
             }
-        } catch {
-            // Detection failed, return nil
         }
         return nil
     }

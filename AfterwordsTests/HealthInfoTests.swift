@@ -46,4 +46,24 @@ final class HealthInfoTests: XCTestCase {
         XCTAssertTrue(info.loadedBackends.isEmpty)
         XCTAssertTrue(info.voices.isEmpty)
     }
+
+    func testDecodingTreatsNullSupportedLangsAsEmpty() throws {
+        // A server that emits `null` (or omits the key) for supported_langs
+        // must not throw — otherwise a single quirky backend would dump
+        // HealthMonitor into .error after 3 polls.
+        let json = """
+        {
+            "status": "ok",
+            "loaded_backends": {
+                "chatterbox": {"supported_langs": null},
+                "qwen3": {}
+            },
+            "voices": []
+        }
+        """.data(using: .utf8)!
+
+        let info = try JSONDecoder().decode(HealthInfo.self, from: json)
+        XCTAssertEqual(info.loadedBackends.count, 2)
+        XCTAssertTrue(info.loadedBackends.allSatisfy { $0.supportedLangs.isEmpty })
+    }
 }
