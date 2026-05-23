@@ -15,7 +15,9 @@ jobs:
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          # Pin to a specific Xcode version so a new stable release on the
+          # macOS runner can't silently break the build. Bump deliberately.
+          xcode-version: "16.2"
 
       - name: Install XcodeGen
         run: brew install xcodegen

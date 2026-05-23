@@ -1,8 +1,10 @@
 .DS_Store
 *.xcworkspace
-!Afterwords.xcodeproj
 xcuserdata/
 build/
 DerivedData/
 *.swp
 *~
+
+# Ad-hoc screenshot artifacts from local QA runs
+screen_*.png

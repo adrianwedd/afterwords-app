@@ -1,35 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Afterwords Sparkle appcast.
+
+    Items must be signed with Ed25519 against the SUPublicEDKey baked into
+    Afterwords/Info.plist. See RELEASING.md for the sign_update workflow.
+
+    Sparkle silently rejects items without a valid sparkle:edSignature, so
+    an empty channel (no <item>s) is the correct state until a signed
+    release is ready to publish.
+-->
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
     <channel>
         <title>Afterwords</title>
         <link>https://raw.githubusercontent.com/adrianwedd/afterwords-app/main/appcast.xml</link>
         <description>Afterwords release notes</description>
         <language>en</language>
-
-        <item>
-            <title>Version 1.0</title>
-            <pubDate>Thu, 21 May 2026 00:00:00 +0000</pubDate>
-            <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[
-                <h3>Afterwords 1.0</h3>
-                <p>Initial release — menu-bar app for managing the Afterwords TTS server.</p>
-                <ul>
-                    <li>Start / Stop / Restart server from the menu bar</li>
-                    <li>Live health polling with backend and voice count display</li>
-                    <li>Voice browser with sample playback</li>
-                    <li>Launch at Login support</li>
-                </ul>
-            ]]></description>
-            <!-- Replace with actual DMG URL and run sign_update to get sparkle:edSignature -->
-            <enclosure
-                url="https://github.com/adrianwedd/afterwords-app/releases/download/v1.0/Afterwords.dmg"
-                sparkle:version="1"
-                sparkle:shortVersionString="1.0"
-                sparkle:edSignature="PLACEHOLDER_SIGN_WITH_sign_update"
-                length="0"
-                type="application/octet-stream" />
-        </item>
     </channel>
 </rss>
