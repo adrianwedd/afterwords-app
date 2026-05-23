@@ -31,22 +31,6 @@ final class CLIExecutorTests: XCTestCase {
         // If not installed, that's also fine (CI environment)
     }
 
-    // MARK: - CLI Path Resolution Priority
-
-    @MainActor
-    func testCLIPathPriority() {
-        // Priority: user override > /usr/local/bin/afterwords > which result
-        let override = "/custom/path/to/afterwords"
-        UserDefaults.standard.set(override, forKey: "cliPathOverride")
-        defer { UserDefaults.standard.removeObject(forKey: "cliPathOverride") }
-
-        let executor = CLIExecutor()
-        // resolvedCLIPath is private, but we can test it indirectly
-        // by checking that startServer doesn't crash (it will fail gracefully)
-        executor.startServer()
-        // No crash = success for this test
-    }
-
     // MARK: - Execute with Missing Binary
 
     @MainActor

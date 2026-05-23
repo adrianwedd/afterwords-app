@@ -76,12 +76,39 @@ final class HealthMonitorTests: XCTestCase {
     // MARK: - Health Success
 
     @MainActor
-    func testHealthSuccessTransition() {
-        // This would require mocking URLSession in a real test
-        // For now, verify the state machine logic works in isolation
+    func testHealthSuccessTransitionsStartingToRunning() {
         monitor.notifyStartAttempt()
-        // After start, state should be .starting
         XCTAssertTrue(monitor.state.isStarting)
+        let info = HealthInfo(status: "ok", loadedBackends: [], voices: ["a", "b"])
+        monitor.simulateHealthResult(info: info)
+        guard case .running(let observed) = monitor.state else {
+            XCTFail("Expected .running after successful poll, got \(monitor.state)")
+            return
+        }
+        XCTAssertEqual(observed, info)
+    }
+
+    @MainActor
+    func testHealthFailureFromRunningRequiresThreeFailuresToError() {
+        let info = HealthInfo(status: "ok", loadedBackends: [], voices: [])
+        monitor.simulateHealthResult(info: info)
+        XCTAssertTrue(monitor.state.isRunning)
+        monitor.simulateHealthResult(error: "connection refused")
+        XCTAssertTrue(monitor.state.isRunning, "1 failure: still running")
+        monitor.simulateHealthResult(error: "connection refused")
+        XCTAssertTrue(monitor.state.isRunning, "2 failures: still running")
+        monitor.simulateHealthResult(error: "connection refused")
+        XCTAssertTrue(monitor.state.isError, "3 failures: should be in .error")
+    }
+
+    @MainActor
+    func testHealthSuccessRecoversFromError() {
+        let info = HealthInfo(status: "ok", loadedBackends: [], voices: [])
+        monitor.simulateHealthResult(info: info)
+        for _ in 0..<3 { monitor.simulateHealthResult(error: "connection refused") }
+        XCTAssertTrue(monitor.state.isError)
+        monitor.simulateHealthResult(info: info)
+        XCTAssertTrue(monitor.state.isRunning, "Successful poll must recover from .error")
     }
 
     // MARK: - Auto-start on first confirmed-stopped poll

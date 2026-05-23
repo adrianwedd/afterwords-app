@@ -38,14 +38,6 @@ enum ServerState: Equatable {
         case .error: return "waveform.badge.exclamationmark"
         }
     }
-
-    static func == (lhs: ServerState, rhs: ServerState) -> Bool {
-        switch (lhs, rhs) {
-        case (.stopped, .stopped): return true
-        case (.starting(let l), .starting(let r)): return l == r
-        case (.running(let l), .running(let r)): return l == r
-        case (.error(let l), .error(let r)): return l == r
-        default: return false
-        }
-    }
+    // Equatable conformance is synthesized — all associated values
+    // (Date, HealthInfo, String) are themselves Equatable.
 }
