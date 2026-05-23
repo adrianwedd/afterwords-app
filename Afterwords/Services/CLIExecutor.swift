@@ -45,6 +45,23 @@ final class CLIExecutor: ObservableObject {
     /// The last error from a CLI command, if any.
     @Published var lastError: String?
 
+    /// The asynchronously-detected CLI path, populated once on init. Cached so
+    /// that `run()` never has to spawn `which afterwords` (a login-shell
+    /// subprocess that sources ~/.zshrc) on the MainActor. Nil until detection
+    /// completes; consumers fall back to the hardcoded default.
+    @Published private(set) var detectedCLIPath: String?
+
+    init() {
+        // Kick off detection in the background so the first user click never
+        // pays for it. The detection itself runs off-MainActor (detectCLIPath
+        // is `nonisolated`) via a child detached task; the assignment hops
+        // back to MainActor through this Task's implicit MainActor inheritance.
+        Task { [weak self] in
+            let path = await Task.detached { CLIExecutor.detectCLIPath() }.value
+            self?.detectedCLIPath = path
+        }
+    }
+
     private let defaultPathDirectories = [
         "/opt/homebrew/bin",
         "/opt/homebrew/sbin",
@@ -95,12 +112,14 @@ final class CLIExecutor: ObservableObject {
     // MARK: - Resolved Paths
 
     /// The resolved path to the `afterwords` binary, used for all CLI calls.
+    /// Order: user override > cached background-detected path > hardcoded
+    /// default. Never spawns a subprocess on the calling thread.
     private var resolvedCLIPath: String {
         let override = UserDefaults.standard.string(forKey: "cliPathOverride") ?? ""
         if !override.isEmpty {
             return override
         }
-        return Self.detectCLIPath() ?? "/usr/local/bin/afterwords"
+        return detectedCLIPath ?? "/usr/local/bin/afterwords"
     }
 
     /// The PATH value injected into every subprocess environment.
