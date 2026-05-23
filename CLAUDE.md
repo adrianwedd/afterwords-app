@@ -51,6 +51,8 @@ Services (all @MainActor ObservableObject, injected via @EnvironmentObject):
 - **Quit does NOT stop the server** — launchd owns the server; the app is just a control panel
 - **Port is UI-only** — changing `CLIExecutor.port` only affects which URL `HealthMonitor` polls; it does not reconfigure the running server's bind port
 - **`HealthInfo.loadedBackends`** is decoded from a JSON dict (keyed by backend name), not an array — the custom `Codable` implementation handles this
+- **CLIExecutor binary detection is synchronous** — `init()` calls `detectCLIPath()` via four `FileManager.isExecutableFile` probes (no subprocess, no shell). `detectedCLIPath` is set before `init()` returns, so `autoStartServer` on the first health-poll failure always sees the correct path
+- **Launch-at-Login toggle uses `Binding(get:set:)`** — programmatic writes to the `launchAtLogin` `@State` property (e.g. from `syncLaunchAtLogin`) never fire the Binding setter; only user interaction through the Toggle does. This avoids re-entrancy with `SMAppService` without requiring a guard flag or `DispatchQueue.main.async` release
 
 ## Coding conventions
 
@@ -64,3 +66,5 @@ Services (all @MainActor ObservableObject, injected via @EnvironmentObject):
 ## Testing
 
 Tests live in `AfterwordsTests/` and use `XCTest`. The `HealthMonitor` exposes `simulateHealthResult(info:error:)` under `#if DEBUG` to drive state-machine tests without real network calls. Run `make test` after any change to services or models.
+
+`HealthInfo` uses `decodeIfPresent` (falling back to empty collection) for all three optional fields — `voices`, `loaded_backends`, and `supported_langs` — so a server emitting `null` for any of them does not throw and does not push `HealthMonitor` into `.error`.

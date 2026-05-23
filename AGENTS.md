@@ -50,5 +50,5 @@ Use the Makefile targets for the standard workflow:
 - The app depends on the external `afterwords` CLI being available on PATH.
 - The project intentionally does not use the App Sandbox because it launches subprocesses.
 - Sparkle 2 (via SPM) is the only third-party dependency. Combine publishers feeding `@MainActor` `@Published` properties must use `.receive(on: DispatchQueue.main)` before `.assign(to:)` — Swift concurrency actors don't auto-dispatch Combine pipelines.
-- Launch-at-login state should read from `SMAppService.mainApp.status`, not a persisted toggle value. If you change `SettingsView.swift`, keep the OS state, UI state, and error handling in sync.
+- Launch-at-login state should read from `SMAppService.mainApp.status`, not a persisted toggle value. If you change `SettingsView.swift`, keep the OS state, UI state, and error handling in sync. The Toggle uses `Binding(get:set:)` rather than binding directly to the `@State` property so that programmatic writes to `launchAtLogin` (e.g. from `syncLaunchAtLogin`) never invoke `SMAppService` re-entrantly — no guard flag is needed.
 - `autoStartServer` is separate from login-item registration. Do not conflate the two in code or QA steps.
