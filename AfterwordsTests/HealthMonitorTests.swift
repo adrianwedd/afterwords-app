@@ -182,6 +182,39 @@ final class HealthMonitorTests: XCTestCase {
             "Auto-start must not re-arm after a .starting-path poll set hasCompletedFirstPoll")
     }
 
+    // MARK: - Stop/poll race
+
+    @MainActor
+    func testInflightSuccessPollDoesNotClobberStop() {
+        // Regression test: in-flight poll returning 200 after notifyStopAttempt()
+        // used to overwrite .stopped → .running, then 3 failures → false "Server crashed".
+        let info = HealthInfo(status: "ok", loadedBackends: [], voices: [])
+        monitor.simulateHealthResult(info: info)     // .running
+        XCTAssertTrue(monitor.state.isRunning)
+
+        monitor.notifyStopAttempt()                  // .stopped (user clicked Stop)
+        XCTAssertEqual(monitor.state, .stopped)
+
+        // In-flight poll that was already issued before the stop lands — must not restore .running
+        monitor.simulateHealthResult(info: info)
+        XCTAssertEqual(monitor.state, .stopped,
+            "A 200 result arriving after notifyStopAttempt must not transition back to .running")
+    }
+
+    @MainActor
+    func testNoFalseCrashErrorAfterCleanStop() {
+        // Full bug scenario: stop → stale in-flight 200 → 3 failures → false "Server crashed"
+        let info = HealthInfo(status: "ok", loadedBackends: [], voices: [])
+        monitor.simulateHealthResult(info: info)
+        monitor.notifyStopAttempt()
+        monitor.simulateHealthResult(info: info)     // stale in-flight 200 — must be ignored
+        for _ in 0..<3 {
+            monitor.simulateHealthResult(error: "connection refused")
+        }
+        XCTAssertEqual(monitor.state, .stopped,
+            "Three poll failures after a clean stop must not produce .error('Server crashed')")
+    }
+
     // MARK: - Consecutive Failure Tracking
 
     @MainActor

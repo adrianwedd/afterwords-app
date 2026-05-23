@@ -48,6 +48,11 @@ final class HealthMonitor: ObservableObject {
     /// requests on top of each other when responses are slow.
     private var pollInFlight = false
 
+    /// Set by notifyStopAttempt(); cleared on the first poll result while in
+    /// .stopped state. Blocks a stale in-flight 200 from clobbering the
+    /// user-requested .stopped state and triggering a false crash error.
+    private var pendingStop = false
+
     /// Dedicated URLSession so the short per-request timeout doesn't affect
     /// any other code path that happens to use URLSession.shared.
     private let session: URLSession = {
@@ -83,6 +88,7 @@ final class HealthMonitor: ObservableObject {
 
     /// Notify that a start command was issued. Transitions to `.starting`.
     func notifyStartAttempt() {
+        pendingStop = false
         startAttemptDate = Date()
         state = .starting(since: startAttemptDate!)
         consecutiveFailures = 0
@@ -92,6 +98,7 @@ final class HealthMonitor: ObservableObject {
 
     /// Notify that a stop command was issued. Transitions to `.stopped`.
     func notifyStopAttempt() {
+        pendingStop = true
         state = .stopped
         consecutiveFailures = 0
         startAttemptDate = nil
@@ -191,6 +198,10 @@ final class HealthMonitor: ObservableObject {
         consecutiveFailures = 0
         startAttemptDate = nil
         hasCompletedFirstPoll = true
+        // Ignore a stale in-flight 200 that arrived after the user clicked Stop.
+        // Without this guard, the .stopped → .running flip causes the next 3 poll
+        // failures to surface as a false "Server crashed" error after a clean stop.
+        if case .stopped = state, pendingStop { pendingStop = false; return }
         state = .running(info)
     }
 
@@ -220,6 +231,7 @@ final class HealthMonitor: ObservableObject {
             // If not enough failures yet, keep polling at normal rate
 
         case .stopped:
+            pendingStop = false
             // On first confirmed-stopped result, honour the auto-start preference.
             // notifyStartAttempt() before startServer() matches the manual UI path
             // and ensures state is .starting before the fire-and-forget CLI call.
