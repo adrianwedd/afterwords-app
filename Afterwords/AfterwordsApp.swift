@@ -33,6 +33,7 @@ struct AfterwordsApp: App {
                 .environmentObject(updaterController)
         } label: {
             Image(systemName: healthMonitor.state.statusIconName)
+                .accessibilityLabel("Afterwords — \(healthMonitor.state.displayName)")
         }
         .menuBarExtraStyle(.window)
 

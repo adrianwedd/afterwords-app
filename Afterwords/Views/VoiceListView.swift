@@ -102,6 +102,18 @@ struct VoiceListView: View {
                         selectedVoice = voice
                         samplePlayer.playSample(voice: voice)
                     }
+                    // Right-click backup for "set as default" — SwiftUI's
+                    // tap-count discrimination has shifted across macOS
+                    // releases, so we don't want the context menu to be
+                    // the only reliable path even if double-click breaks.
+                    .contextMenu {
+                        Button("Play Sample") {
+                            samplePlayer.playSample(voice: voice)
+                        }
+                        Button(voice == preferredVoice ? "Clear Default" : "Set as Default") {
+                            preferredVoice = voice == preferredVoice ? "" : voice
+                        }
+                    }
             }
             .listStyle(.inset(alternatesRowBackgrounds: true))
         }
@@ -147,7 +159,7 @@ struct VoiceListView: View {
                         .foregroundColor(.primary)
                 }
             }
-            Text("Click to play a sample. Double-click to set as default.")
+            Text("Click to play a sample. Double-click or right-click to set as default.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
             if let err = samplePlayer.lastError {
