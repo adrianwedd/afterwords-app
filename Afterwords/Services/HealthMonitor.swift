@@ -31,6 +31,11 @@ final class HealthMonitor: ObservableObject {
     /// How long to wait for server to become healthy before declaring `.error`.
     private let startupTimeout: TimeInterval = 90.0
 
+    /// Per-request timeout. Health is a localhost call against a server that
+    /// either responds in ~1ms or won't respond at all; the default URLSession
+    /// timeout (60s) would let a single hung connection mask many polls.
+    private let requestTimeout: TimeInterval = 3.0
+
     /// Consecutive health-check failures before declaring server down.
     private let crashConfirmCount = 3
 
@@ -38,6 +43,20 @@ final class HealthMonitor: ObservableObject {
     private var consecutiveFailures = 0
     private var startAttemptDate: Date?
     private var hasCompletedFirstPoll = false
+
+    /// Tracks whether a poll is in flight so we don't pile multiple URLSession
+    /// requests on top of each other when responses are slow.
+    private var pollInFlight = false
+
+    /// Dedicated URLSession so the short per-request timeout doesn't affect
+    /// any other code path that happens to use URLSession.shared.
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 3.0
+        config.timeoutIntervalForResource = 3.0
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
 
     init(cliExecutor: CLIExecutor) {
         self.cliExecutor = cliExecutor
@@ -110,18 +129,38 @@ final class HealthMonitor: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 self?.checkHealth()
-                self?.scheduleNextPoll()
+                // Note: scheduleNextPoll() is now driven by checkHealth's
+                // completion handler so the next poll never overlaps with
+                // an in-flight one. See pollInFlight.
             }
         }
     }
 
     private func checkHealth() {
-        let urlString = "http://localhost:\(cliExecutor.port)/health"
-        guard let url = URL(string: urlString) else { return }
+        // If a previous poll is still in flight, skip this tick. The completion
+        // handler will reschedule once it lands. This prevents request pile-up
+        // when the server is slow or unreachable.
+        if pollInFlight {
+            scheduleNextPoll()
+            return
+        }
 
-        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+        let urlString = "http://localhost:\(cliExecutor.port)/health"
+        guard let url = URL(string: urlString) else {
+            scheduleNextPoll()
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = requestTimeout
+        pollInFlight = true
+
+        let task = session.dataTask(with: request) { [weak self] data, response, error in
             Task { @MainActor in
-                self?.handleHealthResponse(data: data, response: response, error: error)
+                guard let self else { return }
+                self.pollInFlight = false
+                self.handleHealthResponse(data: data, response: response, error: error)
+                self.scheduleNextPoll()
             }
         }
         task.resume()
