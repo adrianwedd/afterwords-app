@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>afterwords for Mac</title>
+  <meta name="description" content="A menubar app for your local voice server.">
+  <meta property="og:title" content="afterwords for Mac">
+  <meta property="og:description" content="A native macOS menu-bar app for your local afterwords voice server.">
+  <meta property="og:url" content="https://adrianwedd.github.io/afterwords-app/">
+  <meta property="og:image" content="https://adrianwedd.github.io/afterwords-app/favicons/og-app.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://adrianwedd.github.io/afterwords-app/favicons/og-app.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-cloud-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-cloud-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicons/favicon-cloud-180.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:    #1C1C1A; --bg-up: #222220; --bg-dn: #141412;
+      --fg:    #EDE8DF; --fg-m:  #A09A8F; --fg-d:  #5C5852;
+      --bd:    #3A3A37; --acc:   #B87333;
+      --mono:  ui-monospace,"SF Mono","JetBrains Mono",monospace;
+      --sans:  -apple-system,BlinkMacSystemFont,"Inter",sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;color-scheme:dark;}
+    body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+    .wrap{max-width:720px;margin:0 auto;padding:0 24px;}
+
+    /* Header */
+    header{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--bd);height:52px;}
+    .hdr{display:flex;align-items:center;height:100%;gap:10px;}
+    .wordmark{font-size:15px;font-weight:500;color:var(--fg);text-decoration:none;letter-spacing:-0.01em;}
+
+    /* Sections */
+    section{padding:80px 0;border-bottom:1px solid var(--bd);}
+    .s-label{font-family:var(--mono);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.12em;color:var(--fg-m);margin-bottom:16px;}
+    .s-title{font-size:24px;font-weight:500;line-height:1.3;letter-spacing:-0.02em;margin-bottom:12px;}
+    .s-desc{font-size:15px;color:var(--fg-m);margin-bottom:32px;line-height:1.65;}
+
+    /* Hero */
+    #hero{padding:96px 0 88px;}
+    .hero-h1{font-size:clamp(32px,6vw,48px);font-weight:500;line-height:1.15;letter-spacing:-0.03em;margin-bottom:16px;}
+    .hero-sub{font-size:18px;color:var(--fg-m);max-width:420px;margin-bottom:36px;line-height:1.6;}
+
+    .btn{height:36px;padding:0 16px;border-radius:4px;font-size:15px;font-weight:500;font-family:var(--sans);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;border:none;transition:opacity .12s;}
+    .btn-acc{background:var(--acc);color:var(--bg);}
+    .btn-acc:hover{opacity:.88;}
+    .btn-sec{background:transparent;color:var(--fg);border:1px solid var(--bd);}
+    .btn-sec:hover{background:rgba(237,232,223,.05);border-color:var(--fg-m);}
+
+    /* Animated icon container */
+    .icon-stage{position:relative;display:inline-block;margin-bottom:40px;}
+    /* The animated waveform bars inside the lower comma oval */
+    .wf-bar{transform-box:fill-box;transform-origin:center bottom;}
+
+    @keyframes wf1{0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.55)}}
+    @keyframes wf2{0%,100%{transform:scaleY(0.7)}40%{transform:scaleY(1)}}
+    @keyframes wf3{0%,100%{transform:scaleY(1)}30%{transform:scaleY(0.4)}70%{transform:scaleY(0.85)}}
+    @keyframes wf4{0%,100%{transform:scaleY(0.6)}45%{transform:scaleY(1)}}
+    @keyframes wf5{0%,100%{transform:scaleY(1)}25%{transform:scaleY(0.5)}75%{transform:scaleY(0.9)}}
+    @keyframes wf6{0%,100%{transform:scaleY(0.75)}50%{transform:scaleY(1)}}
+    @keyframes wf7{0%,100%{transform:scaleY(1)}35%{transform:scaleY(0.45)}}
+    @keyframes wf8{0%,100%{transform:scaleY(0.65)}55%{transform:scaleY(1)}}
+    @keyframes wf9{0%,100%{transform:scaleY(1)}20%{transform:scaleY(0.6)}80%{transform:scaleY(0.8)}}
+    @keyframes wf10{0%,100%{transform:scaleY(0.8)}45%{transform:scaleY(1)}}
+    @keyframes wf11{0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.5)}}
+
+    @media(prefers-reduced-motion:reduce){
+      .wf-bar{animation:none!important;}
+    }
+
+    /* Screenshots */
+    .screenshots{display:flex;flex-direction:column;gap:1px;background:var(--bd);border:1px solid var(--bd);border-radius:4px;overflow:hidden;}
+    .screen-item{background:var(--bg-up);padding:0;position:relative;overflow:hidden;}
+    .screen-ph{width:100%;aspect-ratio:16/10;background:var(--bg-dn);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
+    .screen-ph-label{font-family:var(--mono);font-size:11px;color:var(--fg-d);text-transform:uppercase;letter-spacing:.1em;}
+    /* Mock menubar screenshot */
+    .mock-menubar{width:100%;background:var(--bg-dn);border-bottom:1px solid var(--bd);padding:12px 20px;display:flex;justify-content:flex-end;gap:16px;align-items:center;}
+    .mock-menubar-icon{width:18px;height:18px;}
+    .mock-window{background:var(--bg-up);border:1px solid var(--bd);border-radius:8px;margin:20px;padding:20px;max-width:280px;margin-left:auto;margin-right:20px;}
+    .mock-window-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd);font-size:13px;}
+    .mock-window-row:last-child{border-bottom:none;}
+    .mock-val{font-family:var(--mono);font-size:12px;color:var(--fg-m);}
+    .mock-status{width:7px;height:7px;border-radius:50%;background:#6B9E6B;display:inline-block;margin-right:6px;}
+
+    /* Requirements */
+    .req-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bd);border:1px solid var(--bd);border-radius:4px;overflow:hidden;}
+    .req-cell{background:var(--bg-up);padding:16px 20px;}
+    .req-key{font-family:var(--mono);font-size:11px;color:var(--fg-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;}
+    .req-val{font-size:15px;font-weight:500;}
+
+    /* Footer */
+    footer{padding:32px 0;}
+    .footer-row{display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--fg-d);}
+    .footer-row a{color:var(--fg-m);text-decoration:none;}
+    .footer-row a:hover{color:var(--fg);}
+
+    @media(max-width:600px){
+      #hero{padding:56px 0 64px;}
+      section{padding:56px 0;}
+      .req-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="hdr">
+      <a href="#hero" aria-label="afterwords app home">
+        <svg viewBox="0 0 1024 1024" width="26" height="26" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs><clipPath id="app-wf-h"><ellipse cx="568" cy="522" rx="70" ry="86"/></clipPath></defs>
+          <rect width="1024" height="1024" fill="#1C1C1A"/>
+          <ellipse cx="448" cy="415" rx="76" ry="92" fill="#EDE8DF"/>
+          <path fill="#EDE8DF" d="M492,490 C484,490 480,492 476,498 C468,520 468,556 445,582 C432,598 415,606 406,594 C394,579 394,558 404,538 C412,518 420,506 404,490 Z"/>
+          <path fill="#EDE8DF" d="M612,597 C604,597 600,599 596,605 C588,627 588,663 565,689 C552,705 535,713 526,701 C514,686 514,665 524,645 C532,625 540,613 524,597 Z"/>
+          <ellipse cx="568" cy="522" rx="76" ry="92" fill="#1C1C1A" stroke="#EDE8DF" stroke-width="3"/>
+          <g clip-path="url(#app-wf-h)" stroke="#EDE8DF" stroke-width="8" stroke-linecap="round">
+            <line x1="501" y1="510" x2="501" y2="534"/><line x1="514" y1="496" x2="514" y2="548"/>
+            <line x1="527" y1="482" x2="527" y2="562"/><line x1="541" y1="470" x2="541" y2="574"/>
+            <line x1="554" y1="466" x2="554" y2="578"/><line x1="568" y1="464" x2="568" y2="580"/>
+            <line x1="582" y1="467" x2="582" y2="577"/><line x1="595" y1="474" x2="595" y2="570"/>
+            <line x1="609" y1="486" x2="609" y2="558"/><line x1="622" y1="500" x2="622" y2="544"/>
+            <line x1="636" y1="510" x2="636" y2="534"/>
+          </g>
+        </svg>
+      </a>
+      <a href="#hero" class="wordmark">afterwords for Mac</a>
+    </div>
+  </div>
+</header>
+
+<!-- ════ HERO ════ -->
+<section id="hero">
+  <div class="wrap">
+    <!-- Animated icon -->
+    <div class="icon-stage" aria-label="afterwords icon with animated waveform">
+      <svg viewBox="0 0 1024 1024" width="96" height="96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs><clipPath id="app-wf"><ellipse cx="568" cy="522" rx="70" ry="86"/></clipPath></defs>
+        <rect width="1024" height="1024" fill="#1C1C1A"/>
+        <!-- Upper comma -->
+        <ellipse cx="448" cy="415" rx="76" ry="92" fill="#EDE8DF"/>
+        <path fill="#EDE8DF" d="M492,490 C484,490 480,492 476,498 C468,520 468,556 445,582 C432,598 415,606 406,594 C394,579 394,558 404,538 C412,518 420,506 404,490 Z"/>
+        <!-- Lower comma tail -->
+        <path fill="#EDE8DF" d="M612,597 C604,597 600,599 596,605 C588,627 588,663 565,689 C552,705 535,713 526,701 C514,686 514,665 524,645 C532,625 540,613 524,597 Z"/>
+        <!-- Lower comma oval -->
+        <ellipse cx="568" cy="522" rx="76" ry="92" fill="#1C1C1A" stroke="#EDE8DF" stroke-width="3"/>
+        <!-- Animated waveform bars — centred vertically on y=522, each bar is a line segment that scales in Y -->
+        <g clip-path="url(#app-wf)" stroke="#EDE8DF" stroke-width="8" stroke-linecap="round">
+          <!-- Bar heights: rest positions from spec (short at edges, tall in centre) -->
+          <!-- Each bar: x position, symmetric around y=522 centre -->
+          <line class="wf-bar" x1="501" y1="510" x2="501" y2="534" style="animation:wf1 1.1s ease-in-out infinite;"/>
+          <line class="wf-bar" x1="514" y1="496" x2="514" y2="548" style="animation:wf2 0.95s ease-in-out infinite 0.07s;"/>
+          <line class="wf-bar" x1="527" y1="482" x2="527" y2="562" style="animation:wf3 1.25s ease-in-out infinite 0.13s;"/>
+          <line class="wf-bar" x1="541" y1="470" x2="541" y2="574" style="animation:wf4 0.9s ease-in-out infinite 0.05s;"/>
+          <line class="wf-bar" x1="554" y1="466" x2="554" y2="578" style="animation:wf5 1.15s ease-in-out infinite 0.18s;"/>
+          <line class="wf-bar" x1="568" y1="464" x2="568" y2="580" style="animation:wf6 1.0s ease-in-out infinite 0.1s;"/>
+          <line class="wf-bar" x1="582" y1="467" x2="582" y2="577" style="animation:wf7 1.2s ease-in-out infinite 0.22s;"/>
+          <line class="wf-bar" x1="595" y1="474" x2="595" y2="570" style="animation:wf8 0.88s ease-in-out infinite 0.06s;"/>
+          <line class="wf-bar" x1="609" y1="486" x2="609" y2="558" style="animation:wf9 1.1s ease-in-out infinite 0.15s;"/>
+          <line class="wf-bar" x1="622" y1="500" x2="622" y2="544" style="animation:wf10 0.97s ease-in-out infinite 0.09s;"/>
+          <line class="wf-bar" x1="636" y1="510" x2="636" y2="534" style="animation:wf11 1.05s ease-in-out infinite 0.2s;"/>
+        </g>
+      </svg>
+    </div>
+
+    <h1 class="hero-h1">Afterwords<br>for Mac.</h1>
+    <p class="hero-sub">A menubar app for your local voice server.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+      <a href="https://github.com/adrianwedd/afterwords-app/releases" class="btn btn-acc">Download →</a>
+      <a href="https://adrianwedd.github.io/afterwords/" class="btn btn-sec">afterwords local →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ════ SCREENSHOTS ════ -->
+<section id="screenshots">
+  <div class="wrap">
+    <div class="s-label">Screenshots</div>
+    <h2 class="s-title">Voice switching from the menubar.</h2>
+    <p class="s-desc">Manage your local server without touching the terminal. Switch voices, monitor status, trigger synthesis — from anywhere on your Mac.</p>
+
+    <div class="screenshots">
+      <!-- Mock screenshot 1: menubar popover -->
+      <div class="screen-item" style="padding:0;">
+        <div style="background:var(--bg-dn);padding:0 0 24px 0;">
+          <!-- Fake menubar -->
+          <div class="mock-menubar">
+            <svg viewBox="0 0 1024 1024" class="mock-menubar-icon" xmlns="http://www.w3.org/2000/svg">
+              <defs><clipPath id="mb-wf"><ellipse cx="568" cy="522" rx="70" ry="86"/></clipPath></defs>
+              <rect width="1024" height="1024" fill="transparent"/>
+              <ellipse cx="448" cy="415" rx="76" ry="92" fill="#EDE8DF"/>
+              <path fill="#EDE8DF" d="M492,490 C484,490 480,492 476,498 C468,520 468,556 445,582 C432,598 415,606 406,594 C394,579 394,558 404,538 C412,518 420,506 404,490 Z"/>
+              <path fill="#EDE8DF" d="M612,597 C604,597 600,599 596,605 C588,627 588,663 565,689 C552,705 535,713 526,701 C514,686 514,665 524,645 C532,625 540,613 524,597 Z"/>
+              <ellipse cx="568" cy="522" rx="76" ry="92" fill="transparent" stroke="#EDE8DF" stroke-width="3"/>
+              <g clip-path="url(#mb-wf)" stroke="#EDE8DF" stroke-width="8" stroke-linecap="round">
+                <line x1="501" y1="510" x2="501" y2="534"/><line x1="514" y1="496" x2="514" y2="548"/>
+                <line x1="527" y1="482" x2="527" y2="562"/><line x1="541" y1="470" x2="541" y2="574"/>
+                <line x1="554" y1="466" x2="554" y2="578"/><line x1="568" y1="464" x2="568" y2="580"/>
+                <line x1="582" y1="467" x2="582" y2="577"/><line x1="595" y1="474" x2="595" y2="570"/>
+                <line x1="609" y1="486" x2="609" y2="558"/><line x1="622" y1="500" x2="622" y2="544"/>
+                <line x1="636" y1="510" x2="636" y2="534"/>
+              </g>
+            </svg>
+            <span style="font-size:13px;color:var(--fg-m);font-family:var(--mono);">Thu 22 May 14:09</span>
+          </div>
+          <!-- Fake popover window -->
+          <div class="mock-window">
+            <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-d);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--bd);">afterwords</div>
+            <div class="mock-window-row">
+              <span style="color:var(--fg-m);font-size:13px;">Status</span>
+              <span class="mock-val"><span class="mock-status"></span>Running</span>
+            </div>
+            <div class="mock-window-row">
+              <span style="color:var(--fg-m);font-size:13px;">Active voice</span>
+              <span class="mock-val">picard</span>
+            </div>
+            <div class="mock-window-row">
+              <span style="color:var(--fg-m);font-size:13px;">Backend</span>
+              <span class="mock-val">qwen3-1.7b</span>
+            </div>
+            <div class="mock-window-row">
+              <span style="color:var(--fg-m);font-size:13px;">Voices loaded</span>
+              <span class="mock-val">110</span>
+            </div>
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;gap:8px;">
+              <div style="background:var(--bg);border:1px solid var(--bd);border-radius:3px;padding:5px 10px;font-size:12px;color:var(--fg-m);font-family:var(--mono);">Restart</div>
+              <div style="background:var(--bg);border:1px solid var(--bd);border-radius:3px;padding:5px 10px;font-size:12px;color:var(--fg-m);font-family:var(--mono);">Quit</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px 20px;font-family:var(--mono);font-size:11px;color:var(--fg-d);">Server status panel</div>
+      </div>
+
+      <!-- Mock screenshot 2: voice switcher -->
+      <div class="screen-item">
+        <div style="background:var(--bg-dn);padding:24px 20px 20px;display:flex;justify-content:flex-end;">
+          <div style="background:var(--bg-up);border:1px solid var(--bd);border-radius:8px;padding:4px;width:240px;">
+            <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-d);padding:8px 10px 6px;">Switch voice</div>
+            <div style="padding:8px 10px;border-radius:4px;background:#222220;display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+              <span style="font-family:var(--mono);color:#EDE8DF;">picard</span>
+              <span style="font-family:var(--mono);font-size:10px;color:#B87333;">active</span>
+            </div>
+            <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-family:var(--mono);color:#A09A8F;">galadriel</span></div>
+            <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-family:var(--mono);color:#A09A8F;">attenborough</span></div>
+            <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-family:var(--mono);color:#A09A8F;">snape</span></div>
+            <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-family:var(--mono);color:#A09A8F;">data</span></div>
+            <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="color:#A09A8F;">tilda</span></div>
+          </div>
+        </div>
+        <div style="padding:14px 20px;font-family:var(--mono);font-size:11px;color:var(--fg-d);">Voice switcher</div>
+      </div>
+
+      <!-- Mock screenshot 3: synthesis history -->
+      <div class="screen-item">
+        <div style="background:var(--bg-dn);padding:24px 20px 20px;display:flex;justify-content:flex-end;">
+          <div style="background:var(--bg-up);border:1px solid var(--bd);border-radius:8px;padding:0;width:300px;overflow:hidden;">
+            <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-d);padding:10px 14px 8px;border-bottom:1px solid var(--bd);">Recent</div>
+            <div style="padding:10px 14px;border-bottom:1px solid #3A3A37;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-family:var(--mono);font-size:13px;color:#EDE8DF;">picard</div>
+                <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">14.2s · 103 KB</div>
+              </div>
+              <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">14:08</div>
+            </div>
+            <div style="padding:10px 14px;border-bottom:1px solid #3A3A37;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-family:var(--mono);font-size:13px;color:#EDE8DF;">galadriel</div>
+                <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">9.8s · 71 KB</div>
+              </div>
+              <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">14:01</div>
+            </div>
+            <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-family:var(--mono);font-size:13px;color:#EDE8DF;">picard</div>
+                <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">22.1s · 161 KB</div>
+              </div>
+              <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">13:47</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px 20px;font-family:var(--mono);font-size:11px;color:var(--fg-d);">Synthesis history</div>
+      </div>
+    </div>
+    <p style="margin-top:16px;font-size:13px;color:var(--fg-d);">Screenshots are design mockups. Replace with production screenshots before launch.</p>
+  </div>
+</section>
+
+<!-- ════ REQUIREMENTS ════ -->
+<section id="requirements">
+  <div class="wrap">
+    <div class="s-label">Requirements</div>
+    <h2 class="s-title">What you need</h2>
+    <div class="req-grid">
+      <div class="req-cell">
+        <div class="req-key">macOS</div>
+        <div class="req-val">13 Ventura or later</div>
+      </div>
+      <div class="req-cell">
+        <div class="req-key">Hardware</div>
+        <div class="req-val">Apple Silicon</div>
+      </div>
+      <div class="req-cell">
+        <div class="req-key">Requires</div>
+        <div class="req-val"><a href="https://adrianwedd.github.io/afterwords/" style="color:var(--fg);text-underline-offset:2px;">afterwords local</a></div>
+      </div>
+      <div class="req-cell">
+        <div class="req-key">Price</div>
+        <div class="req-val">Free &amp; open source</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ FOOTER ════ -->
+<footer>
+  <div class="wrap">
+    <div class="footer-row">
+      <a href="https://adrianwedd.github.io/afterwords/">afterwords local</a>
+      <span style="color:var(--fg-d);">·</span>
+      <a href="https://afterwords-cloud.pages.dev/">afterwords cloud</a>
+      <span style="color:var(--fg-d);">·</span>
+      <a href="https://github.com/adrianwedd/afterwords-app">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

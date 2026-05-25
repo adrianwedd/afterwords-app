@@ -30,3 +30,11 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Verify GitHub Pages assets
+        run: |
+          test -f docs/index.html         || (echo "ERROR: docs/index.html missing" && exit 1)
+          test -s docs/index.html         || (echo "ERROR: docs/index.html is empty" && exit 1)
+          test -f docs/favicons/og-app.png || (echo "ERROR: docs/favicons/og-app.png missing" && exit 1)
+          test -s docs/favicons/og-app.png || (echo "ERROR: docs/favicons/og-app.png is empty" && exit 1)
+          echo "GitHub Pages assets: OK"
