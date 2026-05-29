@@ -58,6 +58,59 @@ final class CLIExecutorTests: XCTestCase {
         XCTAssertNotNil(executor.lastError)
     }
 
+    // MARK: - CLI Path Validation
+
+    func testValidationRejectsBinaryNotNamedAfterwords() {
+        // Defense-in-depth: a path whose basename isn't `afterwords` (e.g. a
+        // malicious cliPathOverride pointing at an arbitrary executable) must
+        // be refused before we ever spawn it.
+        XCTAssertNotNil(
+            CLIExecutor.validationError(forCLIPath: "/bin/echo"),
+            "A binary not named afterwords should be rejected"
+        )
+    }
+
+    func testValidationRejectsMissingBinary() {
+        XCTAssertNotNil(
+            CLIExecutor.validationError(forCLIPath: "/nonexistent/afterwords"),
+            "A nonexistent path should be rejected"
+        )
+    }
+
+    func testValidationAcceptsExecutableNamedAfterwords() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let binary = dir.appendingPathComponent("afterwords")
+        try "#!/bin/sh\n".write(to: binary, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: binary.path
+        )
+
+        XCTAssertNil(
+            CLIExecutor.validationError(forCLIPath: binary.path),
+            "An executable named afterwords in any directory should be accepted"
+        )
+    }
+
+    @MainActor
+    func testStartServerRefusesOverrideNotNamedAfterwords() async {
+        // /bin/echo exists and is executable, but its basename isn't
+        // `afterwords` — startServer must surface an error and never mark
+        // itself executing.
+        UserDefaults.standard.set("/bin/echo", forKey: "cliPathOverride")
+        defer { UserDefaults.standard.removeObject(forKey: "cliPathOverride") }
+        let executor = CLIExecutor()
+
+        executor.startServer()
+        try? await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertNotNil(executor.lastError)
+        XCTAssertFalse(executor.isExecuting, "Refused command must not leave isExecuting true")
+    }
+
     // MARK: - Port
 
     @MainActor

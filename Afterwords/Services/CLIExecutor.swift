@@ -90,6 +90,32 @@ final class CLIExecutor: ObservableObject {
         return nil
     }
 
+    // MARK: - Validation
+
+    /// Validates a candidate CLI path before it is handed to `Process`.
+    /// Returns a human-readable error string if the path is unsafe to run,
+    /// or nil if it is acceptable.
+    ///
+    /// Defense-in-depth for the unsandboxed-subprocess surface: `cliPathOverride`
+    /// and `additionalPath` live in UserDefaults, which any process running as
+    /// the same user can write. This doesn't cross a privilege boundary (such a
+    /// process can already run code as the user), but refusing to launch a binary
+    /// whose name isn't `afterwords` blocks the casual "repurpose the override to
+    /// run something else" attack — including the silent auto-start path — at
+    /// zero cost to legitimate use, since every path the app itself produces
+    /// (search-path probes, auto-detect, the Settings placeholder) ends in
+    /// `/afterwords`.
+    nonisolated static func validationError(forCLIPath path: String) -> String? {
+        let name = (path as NSString).lastPathComponent
+        guard name == "afterwords" else {
+            return "Refusing to run \u{201C}\(name)\u{201D} — the CLI path must point to a binary named afterwords. Check the CLI Path override in Settings."
+        }
+        guard FileManager.default.isExecutableFile(atPath: path) else {
+            return "afterwords binary not found or not executable at \(path)"
+        }
+        return nil
+    }
+
     // MARK: - Resolved Paths
 
     /// The resolved path to the `afterwords` binary, used for all CLI calls.
@@ -137,9 +163,16 @@ final class CLIExecutor: ObservableObject {
     private func run(_ arguments: [String], timeout: TimeInterval = 30) {
         guard !isExecuting else { return }
         lastError = nil
+
+        let cliPath = resolvedCLIPath
+        if let validationError = Self.validationError(forCLIPath: cliPath) {
+            lastError = validationError
+            return
+        }
+
         isExecuting = true
 
-        Task.detached { [cliPath = resolvedCLIPath, path = resolvedPATH] in
+        Task.detached { [cliPath, path = resolvedPATH] in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: cliPath)
             process.arguments = arguments

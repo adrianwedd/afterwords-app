@@ -6,14 +6,23 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: this job only builds and tests — it never writes to the
+# repo, releases, or the GITHUB_TOKEN-backed APIs. Pin to read-only so a
+# compromised dependency can't push commits or mint packages.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v6
+      # Third-party actions are pinned to a full commit SHA (not a mutable
+      # tag) so a hijacked tag can't silently alter the build. The trailing
+      # comment records the human-readable version; bump both together.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - uses: maxim-lobanov/setup-xcode@v1
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
         with:
           # Pin to a specific Xcode version so a new stable release on the
           # macOS runner can't silently break the build. Bump deliberately.
