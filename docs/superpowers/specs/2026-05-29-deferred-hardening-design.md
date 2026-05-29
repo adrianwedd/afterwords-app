@@ -165,14 +165,18 @@ func simulateHealthResponse(data: Data?, response: URLResponse?, error: Error?) 
 ```
 
 Then one test (in `HealthMonitorTests`): `notifyStartAttempt()` → `.starting`;
-feed a 200 `HTTPURLResponse` with `Data(count: ResponseLimit.health + 1)`; assert
-the state **remains `.starting`**. This is the precise observable behavior: the
-guard intercepts the oversized body before the success decode and routes it
-through `handleHealthFailure`, whose `.starting` branch treats it as a
-not-yet-healthy poll — failure count rises but, with `elapsed < startupTimeout`,
-the state stays `.starting` (never `.running`, never `.error`). Asserting
-`.starting` is retained pins this down more tightly than "not `.running`."
-Allocating ~5 MiB in a test is trivial.
+feed a 200 `HTTPURLResponse` with a **valid but oversized** `HealthInfo` JSON
+body (e.g. `{"status":"ok","pad":"<~5 MiB string>"}`); assert the state
+**remains `.starting`**. The body must be *valid, decodable* JSON over the cap —
+zero-filled `Data(count:)` would fail JSON decode anyway and route to
+`handleHealthFailure` even *without* the guard, so it would not distinguish the
+two. With valid oversized JSON the behavior is unambiguous: without the guard it
+decodes and flips `.starting → .running`; with the guard it is intercepted before
+decode and routed through `handleHealthFailure`, whose `.starting` branch treats
+it as a not-yet-healthy poll — failure count rises but, with
+`elapsed < startupTimeout`, the state stays `.starting` (never `.running`, never
+`.error`). Asserting `.starting` is retained pins this more tightly than "not
+`.running`." Allocating ~5 MiB in a test is trivial.
 
 **Call-site wiring (SamplePlayer)** — left to the predicate test + `make build` +
 manual check. A true call-site test would require injecting a mock `URLSession`
