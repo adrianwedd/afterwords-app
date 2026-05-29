@@ -166,9 +166,13 @@ func simulateHealthResponse(data: Data?, response: URLResponse?, error: Error?) 
 
 Then one test (in `HealthMonitorTests`): `notifyStartAttempt()` → `.starting`;
 feed a 200 `HTTPURLResponse` with `Data(count: ResponseLimit.health + 1)`; assert
-the state does **not** become `.running` (the guard intercepted the body before
-the success decode and routed it through `handleHealthFailure`). Allocating
-~5 MiB in a test is trivial.
+the state **remains `.starting`**. This is the precise observable behavior: the
+guard intercepts the oversized body before the success decode and routes it
+through `handleHealthFailure`, whose `.starting` branch treats it as a
+not-yet-healthy poll — failure count rises but, with `elapsed < startupTimeout`,
+the state stays `.starting` (never `.running`, never `.error`). Asserting
+`.starting` is retained pins this down more tightly than "not `.running`."
+Allocating ~5 MiB in a test is trivial.
 
 **Call-site wiring (SamplePlayer)** — left to the predicate test + `make build` +
 manual check. A true call-site test would require injecting a mock `URLSession`
@@ -228,7 +232,7 @@ Static page, no automated test. Verify:
 
 Sparkle is fully wired but **manual-check only**. There is no `SUEnableAutomaticChecks`
 configuration, so installs rely on the user clicking "Check for Updates…" (plus
-Sparkle's default first-launch prompt). The app already gives users explicit
+Sparkle's default second-launch permission prompt). The app already gives users explicit
 control over its other background behaviors (Auto-start Server, Launch at Login);
 update-checking should match that idiom.
 
@@ -246,7 +250,8 @@ Add:
 ```
 
 `SUEnableAutomaticChecks=true` sets automatic checking on by default and
-suppresses Sparkle's first-launch "do you want automatic updates?" prompt;
+suppresses Sparkle's "do you want automatic updates?" permission prompt (which
+Sparkle otherwise shows on the *second* app launch, not the first);
 `86400` is a once-daily interval. `86400` also happens to be Sparkle's built-in
 default, so the key is technically redundant (Gemini NIT) — it is kept as
 explicit, self-documenting intent so the cadence is visible in the manifest
