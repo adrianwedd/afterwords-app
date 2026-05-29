@@ -76,13 +76,14 @@ enum ResponseLimit {
 
     /// True when the response should be rejected as too large.
     ///
-    /// Rejects when the advertised Content-Length (present only when >= 0)
-    /// exceeds `limit`, OR when the actually-received byte count exceeds
-    /// `limit`. A negative/absent Content-Length (chunked or unknown) is not by
-    /// itself a rejection — the `byteCount` check still bounds what we accept.
-    /// Equality (count == limit) is accepted, not rejected.
-    static func exceeds(contentLength: Int64, byteCount: Int, limit: Int) -> Bool {
-        if contentLength >= 0 && contentLength > Int64(limit) { return true }
+    /// `byteCount` is the real enforcement point — the response body has already
+    /// been buffered by the time callers have it, so the actually-received count
+    /// is authoritative. `advertisedContentLength` is an **advisory fast-path**:
+    /// it short-circuits a server that honestly advertises an oversized body
+    /// (present only when >= 0; a negative value means chunked/unknown and is
+    /// ignored). Equality (count == limit) is accepted, not rejected.
+    static func exceeds(advertisedContentLength: Int64, byteCount: Int, limit: Int) -> Bool {
+        if advertisedContentLength >= 0 && advertisedContentLength > Int64(limit) { return true }
         return byteCount > limit
     }
 }
@@ -94,7 +95,7 @@ enum ResponseLimit {
 `NSSound(data:)`:
 
 ```swift
-if ResponseLimit.exceeds(contentLength: httpResponse.expectedContentLength,
+if ResponseLimit.exceeds(advertisedContentLength: httpResponse.expectedContentLength,
                          byteCount: data.count,
                          limit: ResponseLimit.sample) {
     await applyIfCurrent(token) {
@@ -105,12 +106,25 @@ if ResponseLimit.exceeds(contentLength: httpResponse.expectedContentLength,
 }
 ```
 
-**`HealthMonitor.handleHealthResponse`** — after the `httpResponse.statusCode ==
-200` guard and before `JSONDecoder().decode`:
+**`HealthMonitor.handleHealthResponse`** — two changes. First, rewrite the
+existing top nil-check to bind `data` locally (removing the later `data!`
+force-unwrap, which is only safe by ordering — flagged by both reviewers):
 
 ```swift
-if ResponseLimit.exceeds(contentLength: httpResponse.expectedContentLength,
-                         byteCount: data!.count,
+// was: if error != nil || data == nil { handleHealthFailure(...); return }
+guard error == nil, let data = data else {
+    handleHealthFailure(error: error?.localizedDescription ?? "No response")
+    return
+}
+```
+
+The later `JSONDecoder().decode(HealthInfo.self, from: data!)` then becomes
+`from: data` (no force-unwrap). Second, add the size guard after the
+`httpResponse.statusCode == 200` guard and before the decode:
+
+```swift
+if ResponseLimit.exceeds(advertisedContentLength: httpResponse.expectedContentLength,
+                         byteCount: data.count,
                          limit: ResponseLimit.health) {
     handleHealthFailure(error: "Health response too large")
     return
@@ -120,23 +134,47 @@ if ResponseLimit.exceeds(contentLength: httpResponse.expectedContentLength,
 Routing the oversize case through `handleHealthFailure` is intentional: an
 oversized body is treated as a failed poll, so it correctly feeds the existing
 consecutive-failure / crash-confirm logic rather than introducing a new state
-path. No HealthMonitor invariant changes.
+path. No HealthMonitor invariant changes (the nil-check rewrite is behavior-
+preserving).
 
 ### Testing
 
-New `AfterwordsTests/ResponseLimitTests.swift` exercising `exceeds(...)`:
+**Pure predicate** — new `AfterwordsTests/ResponseLimitTests.swift` exercising
+`exceeds(...)`:
 
 - under limit by both measures → `false`
 - `byteCount` over limit → `true`
-- advertised `contentLength` over limit → `true`
-- unknown `contentLength` (`-1`) with `byteCount` under limit → `false`
+- advertised length over limit → `true`
+- unknown advertised length (`-1`) with `byteCount` under limit → `false`
 - boundary: `byteCount == limit` → `false` (accepted)
-- boundary: `contentLength == limit` → `false` (accepted)
+- boundary: `advertisedContentLength == limit` → `false` (accepted)
 
-The integration sites are not separately unit-tested: `simulateHealthResult`
-takes a decoded `HealthInfo`, not raw bytes, so it cannot drive the byte guard;
-the pure predicate is the unit under test. The wiring is covered by `make build`
-+ `make test` (no regression) and the existing HealthMonitor/SamplePlayer suites.
+**Call-site wiring (HealthMonitor)** — the predicate test proves the helper but
+not that the guard is wired into the right place and routes through the failure
+path (Codex `[SHOULD]`). The existing `simulateHealthResult` hook takes a decoded
+`HealthInfo`, so it bypasses `handleHealthResponse` and cannot drive the byte
+guard. Add a narrow DEBUG seam that drives the real response handler:
+
+```swift
+#if DEBUG
+/// Drive handleHealthResponse directly for tests (e.g. the oversize-body guard).
+func simulateHealthResponse(data: Data?, response: URLResponse?, error: Error?) {
+    handleHealthResponse(data: data, response: response, error: error)
+}
+#endif
+```
+
+Then one test (in `HealthMonitorTests`): `notifyStartAttempt()` → `.starting`;
+feed a 200 `HTTPURLResponse` with `Data(count: ResponseLimit.health + 1)`; assert
+the state does **not** become `.running` (the guard intercepted the body before
+the success decode and routed it through `handleHealthFailure`). Allocating
+~5 MiB in a test is trivial.
+
+**Call-site wiring (SamplePlayer)** — left to the predicate test + `make build` +
+manual check. A true call-site test would require injecting a mock `URLSession`
+into `SamplePlayer` (it currently uses `URLSession.shared` directly); that
+refactor is disproportionate to an INFO finding, and the guard there is a
+straight-line `if` immediately before `NSSound(data:)`.
 
 ---
 
@@ -209,9 +247,11 @@ Add:
 
 `SUEnableAutomaticChecks=true` sets automatic checking on by default and
 suppresses Sparkle's first-launch "do you want automatic updates?" prompt;
-`86400` is a once-daily interval. Once the user toggles the Settings control,
-Sparkle persists their choice in `UserDefaults` and that wins over the plist
-default.
+`86400` is a once-daily interval. `86400` also happens to be Sparkle's built-in
+default, so the key is technically redundant (Gemini NIT) — it is kept as
+explicit, self-documenting intent so the cadence is visible in the manifest
+rather than implied. Once the user toggles the Settings control, Sparkle persists
+their choice in `UserDefaults` and that wins over the plist default.
 
 #### `UpdaterController` (`Afterwords/Services/UpdaterController.swift`)
 
@@ -309,8 +349,9 @@ Info.plist-only changes (Sparkle keys) do not by themselves require
 | --- | --- |
 | `Afterwords/Services/ResponseLimit.swift` | **New** — byte caps + pure `exceeds(...)` predicate |
 | `Afterwords/Services/SamplePlayer.swift` | Add size guard before `NSSound(data:)` |
-| `Afterwords/Services/HealthMonitor.swift` | Add size guard before JSON decode |
+| `Afterwords/Services/HealthMonitor.swift` | Rewrite top nil-check to `guard let data` (drop `data!`); add size guard before JSON decode; add DEBUG `simulateHealthResponse` seam |
 | `AfterwordsTests/ResponseLimitTests.swift` | **New** — unit tests for `exceeds(...)` |
+| `AfterwordsTests/HealthMonitorTests.swift` | Add oversize-body call-site test via the DEBUG seam |
 | `docs/index.html` | Remove the `fonts.googleapis.com` `<link>` |
 | `Afterwords/Info.plist` | Add `SUEnableAutomaticChecks` + `SUScheduledCheckInterval` |
 | `Afterwords/Services/UpdaterController.swift` | Expose `automaticallyChecksForUpdates` + setter |
