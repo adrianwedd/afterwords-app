@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+> **Canonical reference**: architecture, the `ServerState` machine, key design decisions, and coding conventions live in **`CLAUDE.md`** — follow it. This file covers contribution workflow and the repository map only, and does not restate shared technical content.
+
 ## Project Structure & Module Organization
 
 This is a macOS menu-bar app built with SwiftUI and XcodeGen.
@@ -25,9 +27,9 @@ Use the Makefile targets for the standard workflow:
 
 ## Coding Style & Naming Conventions
 
-- Use Swift standard formatting: four-space indentation, `UpperCamelCase` for types, `lowerCamelCase` for methods, properties, and files.
-- Prefer small, focused types and keep UI, state, and process execution logic separated by module folder.
-- Follow the repository’s existing SwiftUI style: concise view builders, `@State`/`@EnvironmentObject` for local and shared state, and explicit comments only where control flow is non-obvious.
+Naming, indentation, the `@MainActor`/Combine/`onChange` rules, and the rest of the conventions are canonical in **`CLAUDE.md` → Coding conventions**. Contribution-specific notes only:
+
+- Keep UI, state, and process-execution logic separated by module folder (`Views/`, `Services/`, `Models/`).
 - There is no dedicated formatter or linter checked in; keep changes consistent with nearby code.
 
 ## Testing Guidelines
@@ -36,8 +38,7 @@ Use the Makefile targets for the standard workflow:
 - Name tests with `test...` and prefer one behavior per test.
 - When fixing regressions, add or update a focused unit test alongside the code change.
 - For UI and app-lifecycle changes, verify both the build and the live app flow. Use `make build` or `make test`, then manually check the menu bar app, Settings window, and server state transitions when relevant.
-- **State-machine tests**: `HealthMonitor` exposes `simulateHealthResult(info:error:)` under `#if DEBUG`. Use it to drive state transitions deterministically without a live server or real network calls. This is the standard path for `HealthMonitorTests`.
-- **`HealthInfo` Codable trap**: `HealthInfo` implements a custom `init(from:)` which suppresses Swift's synthesized memberwise initialiser. An explicit `init(status:loadedBackends:voices:)` is declared for this reason — always use it when constructing test fixtures directly. Do not remove it.
+- Drive state-machine tests via `HealthMonitor.simulateHealthResult(info:error:)` (`#if DEBUG`) — no live server or network. The `HealthInfo` Codable memberwise-init trap (use `init(status:loadedBackends:voices:)` for fixtures) is documented in `CLAUDE.md` → Testing.
 
 ## Commit & Pull Request Guidelines
 
@@ -47,8 +48,8 @@ Use the Makefile targets for the standard workflow:
 
 ## Configuration Notes
 
-- The app depends on the external `afterwords` CLI being available on PATH.
-- The project intentionally does not use the App Sandbox because it launches subprocesses.
-- Sparkle 2 (via SPM) is the only third-party dependency. Combine publishers feeding `@MainActor` `@Published` properties must use `.receive(on: DispatchQueue.main)` before `.assign(to:)` — Swift concurrency actors don't auto-dispatch Combine pipelines.
-- Launch-at-login state should read from `SMAppService.mainApp.status`, not a persisted toggle value. If you change `SettingsView.swift`, keep the OS state, UI state, and error handling in sync. The Toggle uses `Binding(get:set:)` rather than binding directly to the `@State` property so that programmatic writes to `launchAtLogin` (e.g. from `syncLaunchAtLogin`) never invoke `SMAppService` re-entrantly — no guard flag is needed.
+The design decisions behind these — no App Sandbox, PATH-injection vs. discovery, launchd-owns-the-server, the Launch-at-Login `Binding(get:set:)` rationale, port-UI-only — are canonical in `CLAUDE.md` → Key design decisions. Contribution gotchas to keep in mind:
+
+- The app **locates** `afterwords` via fixed-path probes or the Settings override (not via PATH); PATH is injected only into spawned processes. Don't "fix" detection by shelling out to `which` or adding a subprocess — see `CLAUDE.md`.
 - `autoStartServer` is separate from login-item registration. Do not conflate the two in code or QA steps.
+- When changing `SettingsView.swift`, keep OS state (`SMAppService.mainApp.status`), UI state, and error handling in sync; do not persist a proxy toggle value as the source of truth.
