@@ -150,3 +150,57 @@ def build_item(short_version, bundle_version, url, signature, length,
         '                type="application/octet-stream" />\n'
         "        </item>\n"
     )
+
+
+def _read(path):
+    return sys.stdin.read() if path == "-" else open(path, encoding="utf-8").read()
+
+
+def _main(argv=None):
+    parser = argparse.ArgumentParser(description="Appcast helpers for release.sh")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_val = sub.add_parser("validate", help="exit 1 and print problems if invalid")
+    p_val.add_argument("appcast", help="path or - for stdin")
+
+    p_hi = sub.add_parser("highest-version", help="print highest sparkle:version")
+    p_hi.add_argument("appcast")
+
+    p_sh = sub.add_parser("short-versions", help="print existing short versions")
+    p_sh.add_argument("appcast")
+
+    p_bi = sub.add_parser("build-item", help="print a rendered <item>")
+    for flag in ("--short", "--bundle", "--url", "--sig", "--length", "--pubdate"):
+        p_bi.add_argument(flag, required=True)
+
+    p_ins = sub.add_parser("insert-item", help="splice an item file into an appcast")
+    p_ins.add_argument("appcast")
+    p_ins.add_argument("item", help="path to the rendered <item> block")
+
+    args = parser.parse_args(argv)
+
+    if args.cmd == "validate":
+        problems = validate_appcast(_read(args.appcast))
+        for p in problems:
+            print(p)
+        return 1 if problems else 0
+    if args.cmd == "highest-version":
+        hv = highest_version(_read(args.appcast))
+        print("" if hv is None else hv)
+        return 0
+    if args.cmd == "short-versions":
+        print("\n".join(existing_short_versions(_read(args.appcast))))
+        return 0
+    if args.cmd == "build-item":
+        print(build_item(args.short, args.bundle, args.url, args.sig,
+                         args.length, args.pubdate), end="")
+        return 0
+    if args.cmd == "insert-item":
+        item = open(args.item, encoding="utf-8").read()
+        sys.stdout.write(insert_item(_read(args.appcast), item))
+        return 0
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(_main())

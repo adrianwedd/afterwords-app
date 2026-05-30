@@ -1,3 +1,5 @@
+import os
+import subprocess
 import unittest
 
 import release_lib
@@ -171,6 +173,30 @@ class InsertItemTests(unittest.TestCase):
                         twice.index("<sparkle:version>1</sparkle:version>"))
         # and the result is still valid (strictly decreasing)
         self.assertEqual(release_lib.validate_appcast(twice), [])
+
+
+class CliTests(unittest.TestCase):
+    def _run(self, *args, input_text=None):
+        here = os.path.dirname(os.path.abspath(__file__))
+        return subprocess.run(
+            ["python3", os.path.join(here, "release_lib.py"), *args],
+            input=input_text, capture_output=True, text=True,
+        )
+
+    def test_validate_empty_channel_exits_zero(self):
+        r = self._run("validate", "-", input_text=EMPTY_APPCAST)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_validate_bad_appcast_exits_nonzero(self):
+        bad = VALID_ITEM.replace('length="12345"', 'length="0"')
+        r = self._run("validate", "-", input_text=_appcast_with(bad))
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("length", r.stdout + r.stderr)
+
+    def test_highest_version_prints_blank_for_empty(self):
+        r = self._run("highest-version", "-", input_text=EMPTY_APPCAST)
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), "")
 
 
 if __name__ == "__main__":
