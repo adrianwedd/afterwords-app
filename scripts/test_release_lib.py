@@ -90,5 +90,24 @@ class ValidateAppcastTests(unittest.TestCase):
         self.assertTrue(any("DOCTYPE" in p for p in problems))
 
 
+class VersionQueryTests(unittest.TestCase):
+    def test_highest_version_is_none_for_empty_channel(self):
+        self.assertIsNone(release_lib.highest_version(EMPTY_APPCAST))
+
+    def test_highest_version_reads_items(self):
+        self.assertEqual(
+            release_lib.highest_version(_appcast_with(VALID_ITEM)), 2
+        )
+
+    def test_existing_short_versions_empty_channel(self):
+        self.assertEqual(release_lib.existing_short_versions(EMPTY_APPCAST), [])
+
+    def test_existing_short_versions_lists_shorts(self):
+        self.assertEqual(
+            release_lib.existing_short_versions(_appcast_with(VALID_ITEM)),
+            ["1.1"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

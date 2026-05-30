@@ -101,3 +101,18 @@ def validate_appcast(appcast_xml):
                 f"{above} !> {below}"
             )
     return problems
+
+
+def highest_version(appcast_xml):
+    """Highest integer sparkle:version across items, or None if no items."""
+    vers = [
+        int(it["version"])
+        for it in parse_items(appcast_xml)
+        if it["version"] and it["version"].lstrip("-").isdigit()
+    ]
+    return max(vers) if vers else None
+
+
+def existing_short_versions(appcast_xml):
+    """All sparkle:shortVersionString values present (for reuse detection)."""
+    return [it["short"] for it in parse_items(appcast_xml) if it["short"]]
