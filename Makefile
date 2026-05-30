@@ -1,4 +1,4 @@
-.PHONY: project open build test dmg clean
+.PHONY: project open build test dmg clean release
 
 APP_NAME    := Afterwords
 DMG_NAME    := $(APP_NAME).dmg
@@ -31,3 +31,6 @@ dmg: project
 clean:
 	rm -rf Afterwords.xcodeproj
 	rm -rf build/
+
+release:
+	bash scripts/release.sh
