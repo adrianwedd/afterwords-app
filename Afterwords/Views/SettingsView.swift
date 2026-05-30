@@ -3,6 +3,7 @@ import ServiceManagement
 
 struct SettingsView: View {
     @EnvironmentObject var cliExecutor: CLIExecutor
+    @EnvironmentObject var updaterController: UpdaterController
     @AppStorage("autoStartServer") private var autoStartServer = false
     @AppStorage("cliPathOverride") private var cliPathOverride = ""
 
@@ -67,6 +68,16 @@ struct SettingsView: View {
 
             Toggle("Auto-start Server", isOn: $autoStartServer)
                 .help("Start the TTS server when Afterwords opens")
+
+            // Binding(get:set:) mirrors the Launch-at-Login idiom: the setter
+            // only fires on user interaction, so the KVO-driven @Published
+            // updates from UpdaterController don't re-enter it. Do not replace
+            // with .onChange without a re-entrancy guard.
+            Toggle("Automatically check for updates", isOn: Binding(
+                get: { updaterController.automaticallyChecksForUpdates },
+                set: { updaterController.setAutomaticallyChecksForUpdates($0) }
+            ))
+            .help("Let Afterwords check for new versions in the background (about once a day)")
 
             LabeledContent("CLI Path") {
                 TextField("/usr/local/bin/afterwords", text: $cliPathOverride)

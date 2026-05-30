@@ -40,6 +40,7 @@ struct AfterwordsApp: App {
         Settings {
             SettingsView()
                 .environmentObject(cliExecutor)
+                .environmentObject(updaterController)
         }
 
         Window("Voices", id: "voice-list") {
