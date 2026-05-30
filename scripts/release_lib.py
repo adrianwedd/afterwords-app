@@ -5,6 +5,7 @@ function is unit-testable. The CLI at the bottom is the seam release.sh calls.
 """
 
 import argparse
+import html
 import sys
 import xml.etree.ElementTree as ET
 
@@ -105,11 +106,12 @@ def validate_appcast(appcast_xml):
 
 def highest_version(appcast_xml):
     """Highest integer sparkle:version across items, or None if no items."""
-    vers = [
-        int(it["version"])
-        for it in parse_items(appcast_xml)
-        if it["version"] and it["version"].lstrip("-").isdigit()
-    ]
+    vers = []
+    for it in parse_items(appcast_xml):
+        try:
+            vers.append(int(it["version"]))
+        except (TypeError, ValueError):
+            continue
     return max(vers) if vers else None
 
 
@@ -124,7 +126,11 @@ def insert_item(appcast_xml, item_block):
 
     Newest-first = before the first existing <item>, else before </channel>.
     """
-    first_item = appcast_xml.find("        <item>")
+    channel_start = appcast_xml.find("<channel")
+    first_item = (
+        appcast_xml.find("        <item>", channel_start)
+        if channel_start != -1 else -1
+    )
     anchor = first_item if first_item != -1 else appcast_xml.find("    </channel>")
     if anchor == -1:
         raise ValueError("appcast has neither an <item> nor a </channel> anchor")
@@ -134,26 +140,36 @@ def insert_item(appcast_xml, item_block):
 def build_item(short_version, bundle_version, url, signature, length,
                pubdate, min_system="13.0"):
     """Render one appcast <item> block (8-space base indent, trailing \n)."""
+    short_t = html.escape(str(short_version))
+    bundle_t = html.escape(str(bundle_version))
+    min_t = html.escape(str(min_system))
+    pub_t = html.escape(str(pubdate))
+    url_a = html.escape(str(url), quote=True)
+    sig_a = html.escape(str(signature), quote=True)
+    len_a = html.escape(str(length), quote=True)
     return (
         "        <item>\n"
-        f"            <title>Afterwords {short_version}</title>\n"
-        f"            <sparkle:version>{bundle_version}</sparkle:version>\n"
-        f"            <sparkle:shortVersionString>{short_version}"
+        f"            <title>Afterwords {short_t}</title>\n"
+        f"            <sparkle:version>{bundle_t}</sparkle:version>\n"
+        f"            <sparkle:shortVersionString>{short_t}"
         "</sparkle:shortVersionString>\n"
-        f"            <sparkle:minimumSystemVersion>{min_system}"
+        f"            <sparkle:minimumSystemVersion>{min_t}"
         "</sparkle:minimumSystemVersion>\n"
-        f"            <pubDate>{pubdate}</pubDate>\n"
+        f"            <pubDate>{pub_t}</pubDate>\n"
         "            <enclosure\n"
-        f'                url="{url}"\n'
-        f'                sparkle:edSignature="{signature}"\n'
-        f'                length="{length}"\n'
+        f'                url="{url_a}"\n'
+        f'                sparkle:edSignature="{sig_a}"\n'
+        f'                length="{len_a}"\n'
         '                type="application/octet-stream" />\n'
         "        </item>\n"
     )
 
 
 def _read(path):
-    return sys.stdin.read() if path == "-" else open(path, encoding="utf-8").read()
+    if path == "-":
+        return sys.stdin.read()
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
 
 
 def _main(argv=None):
@@ -189,14 +205,17 @@ def _main(argv=None):
         print("" if hv is None else hv)
         return 0
     if args.cmd == "short-versions":
-        print("\n".join(existing_short_versions(_read(args.appcast))))
+        shorts = existing_short_versions(_read(args.appcast))
+        if shorts:
+            print("\n".join(shorts))
         return 0
     if args.cmd == "build-item":
         print(build_item(args.short, args.bundle, args.url, args.sig,
                          args.length, args.pubdate), end="")
         return 0
     if args.cmd == "insert-item":
-        item = open(args.item, encoding="utf-8").read()
+        with open(args.item, encoding="utf-8") as fh:
+            item = fh.read()
         sys.stdout.write(insert_item(_read(args.appcast), item))
         return 0
     return 2

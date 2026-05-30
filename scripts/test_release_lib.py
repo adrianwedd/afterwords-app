@@ -76,11 +76,16 @@ class ValidateAppcastTests(unittest.TestCase):
         self.assertTrue(any("length" in p for p in problems))
 
     def test_non_decreasing_versions_rejected(self):
-        # second item has a HIGHER version below the first -> not newest-first
-        older = VALID_ITEM.replace("<sparkle:version>2</sparkle:version>",
-                                   "<sparkle:version>3</sparkle:version>")
-        problems = release_lib.validate_appcast(_appcast_with(VALID_ITEM + older))
+        # second item has a NEWER version below the first -> not newest-first
+        newer_misplaced = VALID_ITEM.replace("<sparkle:version>2</sparkle:version>",
+                                             "<sparkle:version>3</sparkle:version>")
+        problems = release_lib.validate_appcast(_appcast_with(VALID_ITEM + newer_misplaced))
         self.assertTrue(any("decreasing" in p for p in problems))
+
+    def test_duplicate_versions_rejected(self):
+        dup = VALID_ITEM  # same sparkle:version 2 twice
+        problems = release_lib.validate_appcast(_appcast_with(VALID_ITEM + dup))
+        self.assertTrue(any("duplicate" in p for p in problems))
 
     def test_doctype_is_rejected(self):
         # billion-laughs / XXE both require a DTD; a real appcast never has one.
