@@ -39,7 +39,10 @@ and are explicitly out of scope.
    running copy offers the update — so a human gate before them is required.
 3. **XML is edited with a parser, never `sed`.** Appcast item generation and
    insertion use Python `ElementTree`. Pure logic is unit-tested with stdlib
-   `unittest` — no new dependency.
+   `unittest` — no new dependency. `appcast.xml` opens with a documentation
+   comment block that **must survive the rewrite**, so the serializer must
+   preserve comments (`ElementTree` with `insert_comments=True`, or a targeted
+   string insertion — never a plain re-serialize that drops them).
 
 ## Architecture
 
@@ -52,7 +55,7 @@ The testable core. Functions:
 | Function | Purpose |
 |---|---|
 | `build_item(version, short_version, url, signature, length, pubdate)` | Produce one appcast `<item>` element/string. |
-| `insert_item(appcast_xml, item)` | Insert newest-first into `<channel>` via `ElementTree`; return updated XML. |
+| `insert_item(appcast_xml, item)` | Insert newest-first into `<channel>`, **preserving the leading documentation comment**; return updated XML. |
 | `validate_appcast(xml)` | Structural check (see invariants); returns a list of problems (empty = valid). |
 | `assert_consistent(sign_update_length, stat_length, dmg_sha)` | Raise if the `sign_update` length ≠ `stat -f%z`; the byte-identity guard. |
 
@@ -63,41 +66,55 @@ The testable core. Functions:
 - Every `<item>` has: non-empty `sparkle:edSignature`, `length` an integer > 0,
   a non-empty enclosure `url`, a `sparkle:version`, and a
   `sparkle:shortVersionString`.
-- `sparkle:version` values are unique and strictly increasing down the channel
-  (no reused `CFBundleVersion`).
+- `sparkle:version` values are unique and **strictly decreasing top-to-bottom**
+  (newest item first — matching `insert_item`'s newest-first insertion); no
+  reused `CFBundleVersion`.
 
 ### 2. `scripts/release.sh` — orchestration (entry point, wired as `make release`)
 
 Thin shell that sequences I/O and calls into `release_lib.py`. Two phases.
 
 **Dry-run (default — `make release VERSION=x.y`):**
-1. Preflight: clean working tree on `main`; `gh auth status` OK; `sign_update`
-   located (repo-local `build/DerivedData/.../Sparkle/bin` first); `VERSION`
-   strictly greater than the highest existing appcast `sparkle:shortVersionString`,
-   and the resolved `CFBundleVersion` strictly greater than the highest
-   `sparkle:version`.
-2. `make dmg` → `build/Release/Afterwords.dmg`.
-3. `sign_update` the DMG → capture `sparkle:edSignature` + `length`.
-4. Compute SHA-256 (`shasum -a 256`) and `stat -f%z`.
-5. `assert_consistent(...)` — fail loudly on any byte mismatch.
-6. Print the exact appcast `<item>` to be inserted and the SHA-256. **Stop here.**
+1. Preflight (no build yet): clean working tree on `main`; `git fetch origin` and
+   assert local `main` is **not behind** `origin/main` (no stale-branch publish);
+   `gh auth status` OK; `VERSION` strictly greater than the highest existing
+   appcast `sparkle:shortVersionString` **and** the target `CFBundleVersion`
+   strictly greater than the highest `sparkle:version` — both vacuously true on
+   the empty (first-release) channel.
+2. Bump `Afterwords/Info.plist` (`CFBundleShortVersionString`, `CFBundleVersion`)
+   in the working tree so the DMG embeds the release version.
+3. `make dmg` → `build/Release/Afterwords.dmg`. `sign_update` lives in the
+   DerivedData bundle this step produces, so it is resolved **after** the build,
+   never in preflight.
+4. Resolve `sign_update` from the freshly built bundle; sign the DMG → capture
+   `sparkle:edSignature` + `length`.
+5. Compute SHA-256 (`shasum -a 256`) and `stat -f%z`; `assert_consistent(...)` —
+   fail loudly on any byte mismatch.
+6. Build the appcast `<item>` (enclosure URL is deterministic,
+   `…/releases/download/vX.Y/Afterwords.dmg`); print it plus the SHA-256, then
+   **revert the Info.plist bump** so the tree is clean again. **Stop here.**
 
 **Publish (`make release VERSION=x.y PUBLISH=1`):**
-`PUBLISH=1` re-runs the full dry-run pipeline (steps 1–5) fresh in the same
-invocation — it does **not** reuse a prior `build/Release/Afterwords.dmg`. The
-bytes that get tagged, released, signed, and hashed are therefore guaranteed to
-be the same single artifact. It then continues:
-7. `git tag vX.Y` and push the tag.
+First-run publish repeats steps 1–5 fresh (no reuse of a prior DMG, so the
+tagged, released, and signed bytes are one artifact), then:
+7. Commit the Info.plist bump (`chore(release): bump to x.y`) and `git tag vX.Y`
+   **on that commit** — so the tag captures the correct version — then push the
+   commit and tag.
 8. `gh release create vX.Y build/Release/Afterwords.dmg` with the SHA-256 in the
    release body (the finding-#2 interim verification path).
-9. **Re-download the published asset** and re-verify its length + SHA-256 against
-   the values written into the appcast — closes the loop against an upload that
-   doesn't match the signed bytes.
-10. `insert_item` into `appcast.xml`; `git add appcast.xml Afterwords/Info.plist`;
-    commit (`chore(release): Afterwords x.y`); push `main`. **This is go-live.**
+9. Re-download the published asset; re-verify its **length** against the value
+   written into the appcast `<enclosure>` and its **SHA-256** against the release
+   body — closing the loop against an upload that doesn't match the signed bytes.
+10. `insert_item` into `appcast.xml`; commit (`chore(release): publish x.y
+    appcast`) and push `main`. **This is go-live** — the feed is read from
+    `main`'s HEAD, deliberately after the tag.
 
-Re-running publish must be safe to abort between steps (idempotent preflight:
-detect an existing tag/release for the version and refuse rather than duplicate).
+**Resumable, not just abort-safe.** If `vX.Y`'s tag and release asset already
+exist (a prior run died after step 8), publish must **not** rebuild — a rebuild
+yields different bytes and a different signature. It instead downloads the
+published asset, `sign_update`s *those* bytes, and resumes at step 9/10. Only
+when no tag/release exists does it build fresh. A tag that exists with a
+missing/garbled asset is a refuse-and-report state, never an auto-overwrite.
 
 ### 3. CI job `verify-appcast`
 
@@ -137,22 +154,29 @@ VERSION=x.y ─▶ preflight ─▶ make dmg ─▶ sign_update ─▶ {edSignat
 
 ## Error handling
 
-- **Byte mismatch** (`sign_update` length ≠ `stat`, or re-downloaded asset ≠
-  appcast length/SHA): hard failure, nothing committed/pushed.
-- **Version not increasing**: preflight rejects before building.
+- **Byte mismatch** (`sign_update` length ≠ `stat`, or re-downloaded asset's
+  length ≠ appcast `<enclosure>` / SHA-256 ≠ release body): hard failure, nothing
+  committed/pushed.
+- **Local `main` behind `origin/main`**: preflight rejects before any build —
+  prevents tagging/releasing from a stale tree.
+- **Version not increasing**: preflight rejects before building; the empty
+  first-release channel accepts any version.
 - **Dirty tree / wrong branch / `gh` not authed**: preflight rejects.
-- **Tag or release already exists for the version**: refuse (no silent
-  overwrite); direct the user to bump or to the rollback section.
-- **`sign_update` not found**: actionable message pointing at the locate step
-  (it appears only after `make dmg`).
+- **Tag + release already exist** (partial prior run): **resume** from the
+  published bytes (download → `sign_update` → step 9/10), never rebuild or
+  overwrite. Tag without a usable asset: refuse and report.
+- **`sign_update` not found**: actionable message — it only appears after
+  `make dmg`, so this should fire only if the build failed to fetch Sparkle.
 
 ## Testing
 
 - `scripts/release_lib.py` unit tests (stdlib `unittest`): `build_item` output
-  shape; `insert_item` newest-first ordering and namespace preservation;
-  `validate_appcast` accepts the empty channel and a valid item, rejects each
-  invariant violation; `assert_consistent` passes on equal lengths and raises on
-  mismatch.
+  shape; `insert_item` newest-first ordering, namespace **and leading-comment
+  preservation**; `validate_appcast` accepts the empty channel and a valid item
+  and rejects each invariant violation (incl. non-decreasing versions and an
+  empty `edSignature`); `assert_consistent` passes on equal lengths and raises on
+  mismatch; the version-compare helper treats the empty channel as "any version
+  allowed" rather than erroring on `None`.
 - CI runs these tests plus `validate_appcast` against the committed
   `appcast.xml`.
 - The shell orchestration is verified by a **dry-run against the real repo** (no
@@ -166,6 +190,22 @@ VERSION=x.y ─▶ preflight ─▶ make dmg ─▶ sign_update ─▶ {edSignat
 - Homebrew cask.
 - Changes to appcast hosting or the `SUFeedURL`.
 - The Apple Developer account itself (external blocker).
+
+## Documentation caveats (to verify, then note in `RELEASING.md`)
+
+These are not design requirements — they are claims to confirm and document, not
+assert blindly:
+
+- **Gatekeeper on auto-update.** It is *unconfirmed* whether a Sparkle-delivered
+  update to this unsigned/un-notarized app re-triggers Gatekeeper quarantine on
+  each update (Sparkle 2 generally does not re-prompt for an already-approved
+  app). During implementation, verify the actual behaviour and add an honest note
+  to `RELEASING.md` — do not state it as fact until checked.
+- **EdDSA Keychain account.** `generate_keys` stores the private key under the
+  default account `ed25519` / service `https://sparkle-project.org`; running
+  `generate_keys` for another Sparkle app on the same Mac could overwrite it.
+  The key already exists, so this is a one-line "back up / don't regenerate"
+  caveat in the key-setup section — not a code change.
 
 ## File map
 
