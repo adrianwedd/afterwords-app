@@ -22,6 +22,9 @@ PUBLISH="${PUBLISH:-0}"
 TAG="v${APP_VERSION}"
 ASSET_URL="https://github.com/adrianwedd/afterwords-app/releases/download/${TAG}/Afterwords.dmg"
 
+ITEM_FILE=""
+trap 'rm -f "$ITEM_FILE"' EXIT
+
 die() { echo "ERROR: $*" >&2; exit 1; }
 note() { echo ">>> $*"; }
 
@@ -52,7 +55,8 @@ build_sign_hash() {
   /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUNDLE" "$PLIST"
 
   note "make dmg"
-  make dmg >/dev/null
+  make dmg > /tmp/afterwords-release-build.log 2>&1 \
+    || die "make dmg failed — see /tmp/afterwords-release-build.log"
 
   SIGN_UPDATE="$(find build/DerivedData ~/Library/Developer/Xcode/DerivedData \
     -name sign_update -type f 2>/dev/null | head -n1)"
@@ -87,6 +91,7 @@ resume_from_published() {
   local out; out="$("$SIGN_UPDATE" "$tmp/Afterwords.dmg")"
   SIGNATURE="$(printf '%s' "$out" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')"
   SIGN_LEN="$(printf '%s' "$out" | sed -n 's/.*length="\([0-9]*\)".*/\1/p')"
+  [ -n "$SIGNATURE" ] && [ -n "$SIGN_LEN" ] || die "could not parse sign_update output: $out"
   SHA256="$(shasum -a 256 "$tmp/Afterwords.dmg" | awk '{print $1}')"
   HIGHEST="$(python3 "$LIB" highest-version "$APPCAST")"
   BUNDLE=$(( ${HIGHEST:-0} + 1 ))
@@ -95,6 +100,7 @@ resume_from_published() {
   python3 "$LIB" build-item \
     --short "$APP_VERSION" --bundle "$BUNDLE" --url "$ASSET_URL" \
     --sig "$SIGNATURE" --length "$SIGN_LEN" --pubdate "$PUBDATE" > "$ITEM_FILE"
+  rm -rf "$tmp"
 }
 
 # ---- Publish appcast (the go-live commit) ----------------------------------
@@ -109,19 +115,21 @@ publish_appcast() {
 
   note "Splicing item into $APPCAST"
   python3 "$LIB" insert-item "$APPCAST" "$ITEM_FILE" > "$APPCAST.tmp"
+  python3 "$LIB" validate "$APPCAST.tmp" \
+    || { rm -f "$APPCAST.tmp"; die "resulting appcast failed validation"; }
   mv "$APPCAST.tmp" "$APPCAST"
-  python3 "$LIB" validate "$APPCAST" || die "resulting appcast failed validation"
 
   git add "$APPCAST"
   git commit -m "chore(release): publish $APP_VERSION appcast"
   git push origin main
   note "LIVE — existing installs will offer $APP_VERSION"
+  rm -rf "$tmp"
 }
 
 main() {
   preflight
 
-  if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
+  if git ls-remote --exit-code --tags origin "$TAG" >/dev/null 2>&1; then
     [ "$PUBLISH" = "1" ] || die "tag $TAG already exists — re-run with PUBLISH=1 to resume"
     resume_from_published
     publish_appcast
@@ -144,8 +152,7 @@ main() {
   git add "$PLIST"
   git commit -m "chore(release): bump to $APP_VERSION"
   git tag "$TAG"
-  git push origin main
-  git push origin "$TAG"
+  git push --atomic origin main "$TAG"
   gh release create "$TAG" "$DMG" \
     --title "Afterwords $APP_VERSION" \
     --notes "$(printf 'Afterwords %s\n\n---\n**Verify your download** (the DMG is unsigned/un-notarized):\n\n```\nshasum -a 256 Afterwords.dmg\n```\nExpected: `%s`\n' "$APP_VERSION" "$SHA256")"
