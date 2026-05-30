@@ -138,5 +138,40 @@ class BuildItemTests(unittest.TestCase):
         self.assertTrue(self._item().startswith("        <item>\n"))
 
 
+class InsertItemTests(unittest.TestCase):
+    def _new_item(self, short, bundle):
+        return release_lib.build_item(
+            short_version=short, bundle_version=bundle,
+            url=f"https://example/releases/download/v{short}/Afterwords.dmg",
+            signature="sig==", length=999,
+            pubdate="Thu, 29 May 2026 12:00:00 +0000",
+        )
+
+    def test_insert_into_empty_channel_validates(self):
+        out = release_lib.insert_item(EMPTY_APPCAST, self._new_item("1.0", 1))
+        self.assertEqual(release_lib.validate_appcast(out), [])
+        self.assertIn("<sparkle:version>1</sparkle:version>", out)
+
+    def test_preserves_leading_comment(self):
+        out = release_lib.insert_item(EMPTY_APPCAST, self._new_item("1.0", 1))
+        self.assertIn("<!-- doc comment that must survive -->", out)
+
+    def test_preserves_sparkle_namespace_declaration(self):
+        out = release_lib.insert_item(EMPTY_APPCAST, self._new_item("1.0", 1))
+        self.assertIn(
+            'xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"',
+            out,
+        )
+
+    def test_newest_first_ordering(self):
+        once = release_lib.insert_item(EMPTY_APPCAST, self._new_item("1.0", 1))
+        twice = release_lib.insert_item(once, self._new_item("1.1", 2))
+        # newest (version 2) must appear before older (version 1)
+        self.assertLess(twice.index("<sparkle:version>2</sparkle:version>"),
+                        twice.index("<sparkle:version>1</sparkle:version>"))
+        # and the result is still valid (strictly decreasing)
+        self.assertEqual(release_lib.validate_appcast(twice), [])
+
+
 if __name__ == "__main__":
     unittest.main()

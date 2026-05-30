@@ -118,6 +118,19 @@ def existing_short_versions(appcast_xml):
     return [it["short"] for it in parse_items(appcast_xml) if it["short"]]
 
 
+def insert_item(appcast_xml, item_block):
+    """Insert item_block newest-first via string splice (preserving comments
+    and the namespace declaration that an ElementTree round-trip would drop).
+
+    Newest-first = before the first existing <item>, else before </channel>.
+    """
+    first_item = appcast_xml.find("        <item>")
+    anchor = first_item if first_item != -1 else appcast_xml.find("    </channel>")
+    if anchor == -1:
+        raise ValueError("appcast has neither an <item> nor a </channel> anchor")
+    return appcast_xml[:anchor] + item_block + appcast_xml[anchor:]
+
+
 def build_item(short_version, bundle_version, url, signature, length,
                pubdate, min_system="13.0"):
     """Render one appcast <item> block (8-space base indent, trailing \n)."""
