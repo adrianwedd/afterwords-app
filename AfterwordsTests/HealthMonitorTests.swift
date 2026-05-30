@@ -227,4 +227,27 @@ final class HealthMonitorTests: XCTestCase {
         monitor.notifyStartAttempt()
         XCTAssertTrue(monitor.state.isStarting)
     }
+
+    // MARK: - Oversize response guard (finding #4)
+
+    @MainActor
+    func testOversizeHealthBodyIsRejectedBeforeDecode() {
+        monitor.notifyStartAttempt()
+        XCTAssertTrue(monitor.state.isStarting)
+
+        // A VALID HealthInfo JSON body padded past the cap. Without the guard
+        // this decodes successfully and flips .starting → .running; the guard
+        // must intercept it first, so the oversize poll is treated as a
+        // not-yet-healthy failure and the state stays .starting.
+        let pad = String(repeating: "a", count: ResponseLimit.health)
+        let json = "{\"status\":\"ok\",\"pad\":\"\(pad)\"}".data(using: .utf8)!
+        XCTAssertGreaterThan(json.count, ResponseLimit.health)
+
+        let url = URL(string: "http://localhost:7860/health")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        monitor.simulateHealthResponse(data: json, response: response, error: nil)
+
+        XCTAssertTrue(monitor.state.isStarting,
+            "Oversize body must be rejected before decode and leave state .starting (not .running)")
+    }
 }

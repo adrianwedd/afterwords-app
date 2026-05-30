@@ -116,6 +116,13 @@ final class HealthMonitor: ObservableObject {
             handleHealthFailure(error: error ?? "connection refused")
         }
     }
+
+    /// Drive handleHealthResponse directly for tests (e.g. the oversize-body
+    /// guard, which simulateHealthResult cannot reach because it takes a decoded
+    /// HealthInfo). For unit tests only.
+    func simulateHealthResponse(data: Data?, response: URLResponse?, error: Error?) {
+        handleHealthResponse(data: data, response: response, error: error)
+    }
     #endif
 
     // MARK: - Polling
@@ -174,8 +181,8 @@ final class HealthMonitor: ObservableObject {
     }
 
     private func handleHealthResponse(data: Data?, response: URLResponse?, error: Error?) {
-        // Connection refused or network error
-        if error != nil || data == nil {
+        // Bind data locally so the precondition is explicit (no later force-unwrap).
+        guard error == nil, let data = data else {
             handleHealthFailure(error: error?.localizedDescription ?? "No response")
             return
         }
@@ -186,8 +193,16 @@ final class HealthMonitor: ObservableObject {
             return
         }
 
+        // Reject an oversized body before decoding it (security finding #4).
+        if ResponseLimit.exceeds(advertisedContentLength: httpResponse.expectedContentLength,
+                                 byteCount: data.count,
+                                 limit: ResponseLimit.health) {
+            handleHealthFailure(error: "Health response too large")
+            return
+        }
+
         do {
-            let info = try JSONDecoder().decode(HealthInfo.self, from: data!)
+            let info = try JSONDecoder().decode(HealthInfo.self, from: data)
             handleHealthSuccess(info)
         } catch {
             handleHealthFailure(error: "Invalid JSON: \(error.localizedDescription)")

@@ -125,6 +125,16 @@ final class SamplePlayer: NSObject, ObservableObject {
             return
         }
 
+        if ResponseLimit.exceeds(advertisedContentLength: httpResponse.expectedContentLength,
+                                 byteCount: data.count,
+                                 limit: ResponseLimit.sample) {
+            await applyIfCurrent(token) {
+                self.playingVoice = nil
+                self.lastError = "Server response too large to play."
+            }
+            return
+        }
+
         guard let sound = NSSound(data: data) else {
             await applyIfCurrent(token) {
                 self.playingVoice = nil
