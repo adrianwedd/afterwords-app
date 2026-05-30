@@ -204,5 +204,23 @@ class CliTests(unittest.TestCase):
         self.assertEqual(r.stdout.strip(), "")
 
 
+class VersionOrderingTests(unittest.TestCase):
+    def test_first_release_any_version_ok(self):
+        self.assertTrue(release_lib.short_version_is_newer("1.0", []))
+
+    def test_strictly_greater_ok(self):
+        self.assertTrue(release_lib.short_version_is_newer("1.2", ["1.1", "1.0"]))
+
+    def test_equal_rejected(self):
+        self.assertFalse(release_lib.short_version_is_newer("1.1", ["1.1"]))
+
+    def test_lower_rejected(self):
+        self.assertFalse(release_lib.short_version_is_newer("1.0", ["1.1"]))
+
+    def test_non_numeric_raises(self):
+        with self.assertRaises(ValueError):
+            release_lib.short_version_is_newer("1.x", ["1.0"])
+
+
 if __name__ == "__main__":
     unittest.main()
