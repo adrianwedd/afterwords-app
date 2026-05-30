@@ -47,3 +47,9 @@ jobs:
           test -f docs/favicons/og-app.png || (echo "ERROR: docs/favicons/og-app.png missing" && exit 1)
           test -s docs/favicons/og-app.png || (echo "ERROR: docs/favicons/og-app.png is empty" && exit 1)
           echo "GitHub Pages assets: OK"
+
+      - name: Verify appcast + release tooling
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_*.py' -v
+          python3 scripts/release_lib.py validate appcast.xml
+          echo "appcast + release_lib: OK"
