@@ -120,6 +120,20 @@ def existing_short_versions(appcast_xml):
     return [it["short"] for it in parse_items(appcast_xml) if it["short"]]
 
 
+def _version_tuple(short_version):
+    """Dotted-numeric version as an int tuple, e.g. '1.2' -> (1, 2)."""
+    return tuple(int(part) for part in str(short_version).split("."))
+
+
+def short_version_is_newer(candidate, existing_shorts):
+    """True if candidate is strictly greater than every version in
+    existing_shorts. Empty list -> True (first release). Raises ValueError if
+    any version component is non-numeric.
+    """
+    cand = _version_tuple(candidate)
+    return all(cand > _version_tuple(v) for v in existing_shorts)
+
+
 def insert_item(appcast_xml, item_block):
     """Insert item_block newest-first via string splice (preserving comments
     and the namespace declaration that an ElementTree round-trip would drop).
@@ -185,6 +199,13 @@ def _main(argv=None):
     p_sh = sub.add_parser("short-versions", help="print existing short versions")
     p_sh.add_argument("appcast")
 
+    p_ok = sub.add_parser(
+        "version-ok",
+        help="exit 0 if --candidate strictly exceeds all published short versions",
+    )
+    p_ok.add_argument("--candidate", required=True)
+    p_ok.add_argument("appcast")
+
     p_bi = sub.add_parser("build-item", help="print a rendered <item>")
     for flag in ("--short", "--bundle", "--url", "--sig", "--length", "--pubdate"):
         p_bi.add_argument(flag, required=True)
@@ -209,6 +230,15 @@ def _main(argv=None):
         if shorts:
             print("\n".join(shorts))
         return 0
+    if args.cmd == "version-ok":
+        try:
+            ok = short_version_is_newer(
+                args.candidate, existing_short_versions(_read(args.appcast))
+            )
+        except ValueError as exc:
+            print(exc)
+            return 1
+        return 0 if ok else 1
     if args.cmd == "build-item":
         print(build_item(args.short, args.bundle, args.url, args.sig,
                          args.length, args.pubdate), end="")

@@ -38,10 +38,10 @@ preflight() {
     || die "local main is behind origin/main — pull first"
   gh auth status >/dev/null 2>&1 || die "gh not authenticated (gh auth login)"
 
-  # Reuse guard: short version must not already be published.
-  if python3 "$LIB" short-versions "$APPCAST" | grep -qx "$APP_VERSION"; then
-    die "version $APP_VERSION already exists in $APPCAST"
-  fi
+  # Ordering guard: VERSION must be strictly greater than every published
+  # short version (this also rejects exact reuse). Empty channel accepts anything.
+  python3 "$LIB" version-ok --candidate "$APP_VERSION" "$APPCAST" \
+    || die "VERSION $APP_VERSION must be strictly greater than the highest published version (and must not reuse one)"
 
   HIGHEST="$(python3 "$LIB" highest-version "$APPCAST")"
   BUNDLE=$(( ${HIGHEST:-0} + 1 ))
@@ -151,6 +151,9 @@ main() {
   note "Publishing $APP_VERSION"
   git add "$PLIST"
   git commit -m "chore(release): bump to $APP_VERSION"
+  if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+    die "local tag $TAG already exists (prior failed push?) — run 'git tag -d $TAG' and retry"
+  fi
   git tag "$TAG"
   git push --atomic origin main "$TAG"
   gh release create "$TAG" "$DMG" \
