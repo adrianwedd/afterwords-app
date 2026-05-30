@@ -109,5 +109,34 @@ class VersionQueryTests(unittest.TestCase):
         )
 
 
+class BuildItemTests(unittest.TestCase):
+    def _item(self):
+        return release_lib.build_item(
+            short_version="1.1",
+            bundle_version=2,
+            url="https://example/releases/download/v1.1/Afterwords.dmg",
+            signature="abc==",
+            length=12345,
+            pubdate="Thu, 29 May 2026 12:00:00 +0000",
+        )
+
+    def test_contains_expected_fields(self):
+        item = self._item()
+        self.assertIn("<title>Afterwords 1.1</title>", item)
+        self.assertIn("<sparkle:version>2</sparkle:version>", item)
+        self.assertIn("<sparkle:shortVersionString>1.1</sparkle:shortVersionString>", item)
+        self.assertIn('sparkle:edSignature="abc=="', item)
+        self.assertIn('length="12345"', item)
+        self.assertIn("<sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>", item)
+
+    def test_is_well_formed_inside_a_channel(self):
+        # Building an appcast from the item must parse and validate clean.
+        appcast = _appcast_with(self._item())
+        self.assertEqual(release_lib.validate_appcast(appcast), [])
+
+    def test_eight_space_base_indent(self):
+        self.assertTrue(self._item().startswith("        <item>\n"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -116,3 +116,24 @@ def highest_version(appcast_xml):
 def existing_short_versions(appcast_xml):
     """All sparkle:shortVersionString values present (for reuse detection)."""
     return [it["short"] for it in parse_items(appcast_xml) if it["short"]]
+
+
+def build_item(short_version, bundle_version, url, signature, length,
+               pubdate, min_system="13.0"):
+    """Render one appcast <item> block (8-space base indent, trailing \n)."""
+    return (
+        "        <item>\n"
+        f"            <title>Afterwords {short_version}</title>\n"
+        f"            <sparkle:version>{bundle_version}</sparkle:version>\n"
+        f"            <sparkle:shortVersionString>{short_version}"
+        "</sparkle:shortVersionString>\n"
+        f"            <sparkle:minimumSystemVersion>{min_system}"
+        "</sparkle:minimumSystemVersion>\n"
+        f"            <pubDate>{pubdate}</pubDate>\n"
+        "            <enclosure\n"
+        f'                url="{url}"\n'
+        f'                sparkle:edSignature="{signature}"\n'
+        f'                length="{length}"\n'
+        '                type="application/octet-stream" />\n'
+        "        </item>\n"
+    )
