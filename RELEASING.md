@@ -44,6 +44,14 @@ Be honest with yourself and with users about what protects a release today:
   To compensate, **publish the DMG's SHA-256 in each GitHub Release body** so
   users can verify the bytes they downloaded by hand. This is a documented
   recommendation from `docs/security-review-2026-05-29.md` (Finding 2).
+- **Gatekeeper on auto-update.** TODO during first real release: verify whether
+  a Sparkle-delivered update to this unsigned app re-triggers a Gatekeeper
+  right-click→Open prompt on *each* update, or only the first manual install.
+  Document the observed behaviour here honestly once confirmed; do not assume.
+- **Protect the EdDSA key.** It lives in the Keychain under the default account
+  `ed25519` / service `https://sparkle-project.org`. Do **not** run
+  `generate_keys` again on this machine (e.g. for another Sparkle app) — it can
+  overwrite this key, which is unrecoverable for the installed base. Back it up.
 
 Developer ID signing + notarization are **roadmap items**, not something that
 exists today. Do not document signing/notarization steps as if they are wired
@@ -119,6 +127,38 @@ recovery** — you cannot simply swap the key and ship through Sparkle.
 ---
 
 ## Cutting a release
+
+### The fast path: `make release`
+
+The whole flow below is automated by one command. **Dry-run by default:**
+
+```bash
+make release VERSION=1.1
+```
+
+This bumps `Info.plist`, builds the DMG, signs it, computes the SHA-256,
+asserts the signed length matches the bytes on disk, and prints the exact
+appcast `<item>` and SHA-256 — then **reverts the version bump and stops**.
+Nothing is tagged, released, or pushed. `CFBundleVersion` is derived
+automatically as `highest + 1`, so you never hand-pick it.
+
+Review the printed item and SHA-256, then go live:
+
+```bash
+make release VERSION=1.1 PUBLISH=1
+```
+
+This commits the bump, tags `v1.1` on that commit, creates the GitHub Release
+(DMG attached, SHA-256 in the body), re-downloads the published asset to
+re-verify its length and SHA-256, then splices the item into `appcast.xml` and
+pushes `main`. If a prior run died after the release was created, re-running
+with `PUBLISH=1` **resumes from the published bytes** (it re-signs the existing
+asset rather than rebuilding) and finishes the appcast.
+
+The manual steps below remain the source of truth the script automates, and the
+fallback if it ever breaks.
+
+---
 
 The steps are ordered for a **safe, atomic publish**: build → sign → hash →
 write the appcast item → tag → create the GitHub Release with the exact signed
