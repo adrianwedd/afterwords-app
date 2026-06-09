@@ -136,9 +136,7 @@ struct VoiceListView: View {
             }
             Spacer()
             if samplePlayer.playingVoice == voice {
-                ProgressView()
-                    .scaleEffect(0.5)
-                    .frame(width: 16, height: 16)
+                EqualizerView(active: true, color: .accentColor, barCount: 5, maxHeight: 12)
             }
         }
     }
@@ -149,6 +147,12 @@ struct VoiceListView: View {
                 Text("\(filteredVoices.count) voice\(filteredVoices.count == 1 ? "" : "s")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if let playing = samplePlayer.playingVoice {
+                    EqualizerView(active: true, color: .accentColor, barCount: 5, maxHeight: 10)
+                    Text("playing \(playing)")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(Color.accentColor)
+                }
                 Spacer()
                 if !preferredVoice.isEmpty {
                     Text("Default: ")

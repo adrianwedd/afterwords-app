@@ -1,52 +1,78 @@
 import SwiftUI
 
+/// Status hero card — redesigned for v1.2.
+/// Sunken card with a colored dot, mono headline, explanatory sub-text,
+/// and a trailing equalizer (running) or progress spinner (starting).
 struct StatusView: View {
     @EnvironmentObject var healthMonitor: HealthMonitor
 
     var body: some View {
-        HStack(spacing: 8) {
-            statusIcon
-            statusText
-            Spacer()
-            if healthMonitor.state.isStarting {
-                ProgressView()
-                    .scaleEffect(0.6)
-                    .frame(width: 16, height: 16)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(dotColor)
+                    .frame(width: 8, height: 8)
+                Text(headline)
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundStyle(healthMonitor.state.isError ? Color.red : Color.primary)
+                Spacer()
+                trailing
             }
+            Text(sub)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(healthMonitor.state.isError ? Color.red : Color.secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5)
+        )
+    }
+
+    private var dotColor: Color {
+        switch healthMonitor.state {
+        case .stopped:  return .secondary
+        case .starting: return .yellow
+        case .running:  return .green
+        case .error:    return .red
         }
     }
 
-    @ViewBuilder
-    private var statusIcon: some View {
-        let color: Color = switch healthMonitor.state {
-        case .stopped: .secondary
-        case .starting: .yellow
-        case .running: .green
-        case .error: .red
+    private var headline: String {
+        switch healthMonitor.state {
+        case .stopped:  return "Server stopped"
+        case .starting: return "Starting\u{2026}"
+        case .running:  return "Running"
+        case .error:    return "Server crashed"
         }
-        Image(systemName: healthMonitor.state.statusIconName)
-            .foregroundStyle(color)
     }
 
-    @ViewBuilder
-    private var statusText: some View {
+    private var sub: String {
         switch healthMonitor.state {
         case .stopped:
-            Text("Server stopped")
-                .foregroundStyle(.secondary)
-        case .starting(let since):
-            Text("Starting \(since, style: .timer)…")
+            return "Press Start to launch the local server."
+        case .starting:
+            return "Waiting for the first healthy /health poll."
         case .running(let info):
-            Text("Running — \(info.voices.count) voice\(info.voices.count == 1 ? "" : "s")")
+            let backend = info.loadedBackends.first?.name ?? "\u{2014}"
+            return "\(backend) \u{00B7} \(info.voices.count) voice\(info.voices.count == 1 ? "" : "s") loaded"
         case .error(let message):
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Error")
-                    .foregroundStyle(.red)
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
+            return message
+        }
+    }
+
+    @ViewBuilder
+    private var trailing: some View {
+        if healthMonitor.state.isRunning {
+            EqualizerView(active: true, color: .green, barCount: 11, maxHeight: 14)
+        } else if healthMonitor.state.isStarting {
+            ProgressView()
+                .scaleEffect(0.65)
+                .frame(width: 18, height: 18)
         }
     }
 }
