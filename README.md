@@ -9,7 +9,7 @@ A native macOS menu-bar **control panel** for the locally-running
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)
 ![Sparkle 2](https://img.shields.io/badge/updates-Sparkle%202-green)
 
-Website: <https://afterwords-app.pages.dev/>
+**[afterwords local](https://adrianwedd.github.io/afterwords/)** &nbsp;·&nbsp; **[afterwords for Mac](https://afterwords-app.pages.dev/)** &nbsp;·&nbsp; **[afterwords cloud](https://afterwords-cloud.pages.dev/)**
 
 ## What it is
 
@@ -43,6 +43,10 @@ but separate sibling projects, which it does not bundle or manage:
   Running).
 - **Logs** button — opens `/tmp/claude-tts-server.log` in Console.app.
 - **API** button — opens `http://localhost:<port>` in your browser.
+- **Mute / Unmute** button — toggles TTS playback without stopping synthesis.
+  Creates or removes `/tmp/afterwords-muted`; the menu-bar icon switches to a
+  muted speaker when active. External changes (e.g. `afterwords mute` in the
+  terminal) are reflected within the next health-poll cycle (~5 s).
 - **Voices window** — a flat, alphabetical, searchable list of the server's
   voices (populated only while the server is Running).
   - **Single-click** a voice to hear a short, fixed-phrase sample
@@ -73,9 +77,9 @@ server directly (e.g. its `/synthesize` HTTP endpoint).
 There is no embedded screenshot in this repo. In short:
 
 - The **popover** (click the menu-bar icon) shows a status line, the
-  Start/Stop/Restart row, the Logs/API row, a backend/voice count when Running,
-  the default voice (if set), and buttons for *Voices…*, *Settings…*, and
-  *Check for Updates…*.
+  Start/Stop/Restart row, the Logs / API / Mute row, a backend/voice count when
+  Running, the default voice (if set), and buttons for *Voices…*, *Settings…*,
+  and *Check for Updates…*.
 - The **Voices window** is a search box over an alphabetical voice list with a
   footer reminder: "Click to play a sample. Double-click or right-click to set
   as default."

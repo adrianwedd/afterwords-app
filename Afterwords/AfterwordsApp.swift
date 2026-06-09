@@ -32,8 +32,14 @@ struct AfterwordsApp: App {
                 .environmentObject(cliExecutor)
                 .environmentObject(updaterController)
         } label: {
-            Image(systemName: healthMonitor.state.statusIconName)
-                .accessibilityLabel("Afterwords — \(healthMonitor.state.displayName)")
+            let iconName = cliExecutor.isMuted && healthMonitor.state.isRunning
+                ? "speaker.slash.circle.fill"
+                : healthMonitor.state.statusIconName
+            let label = cliExecutor.isMuted
+                ? "Afterwords — \(healthMonitor.state.displayName) (muted)"
+                : "Afterwords — \(healthMonitor.state.displayName)"
+            Image(systemName: iconName)
+                .accessibilityLabel(label)
         }
         .menuBarExtraStyle(.window)
 

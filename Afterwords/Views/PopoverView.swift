@@ -68,6 +68,18 @@ struct PopoverView: View {
                 } label: {
                     Label("API", systemImage: "globe")
                 }
+
+                Spacer()
+
+                Button {
+                    cliExecutor.toggleMute()
+                } label: {
+                    Label(
+                        cliExecutor.isMuted ? "Unmute" : "Mute",
+                        systemImage: cliExecutor.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill"
+                    )
+                }
+                .tint(cliExecutor.isMuted ? .orange : nil)
             }
 
             Divider()

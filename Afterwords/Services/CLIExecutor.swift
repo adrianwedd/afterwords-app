@@ -45,6 +45,11 @@ final class CLIExecutor: ObservableObject {
     /// The last error from a CLI command, if any.
     @Published var lastError: String?
 
+    /// Whether playback is muted. Mirrors the sentinel file at `/tmp/afterwords-muted`.
+    @Published var isMuted: Bool = FileManager.default.fileExists(atPath: "/tmp/afterwords-muted")
+
+    private let muteFilePath = "/tmp/afterwords-muted"
+
     /// The detected CLI path, resolved synchronously on init by probing known
     /// install locations. Nil if none of the known locations contain the binary.
     @Published private(set) var detectedCLIPath: String?
@@ -137,6 +142,22 @@ final class CLIExecutor: ObservableObject {
             return defaultPath
         }
         return userPaths + ":" + defaultPath
+    }
+
+    // MARK: - Mute
+
+    func toggleMute() {
+        if isMuted {
+            try? FileManager.default.removeItem(atPath: muteFilePath)
+        } else {
+            FileManager.default.createFile(atPath: muteFilePath, contents: nil)
+        }
+        isMuted = FileManager.default.fileExists(atPath: muteFilePath)
+    }
+
+    func refreshMuteState() {
+        let current = FileManager.default.fileExists(atPath: muteFilePath)
+        if current != isMuted { isMuted = current }
     }
 
     // MARK: - Server Lifecycle Commands
