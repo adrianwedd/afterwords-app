@@ -15,5 +15,17 @@
         <link>https://raw.githubusercontent.com/adrianwedd/afterwords-app/main/appcast.xml</link>
         <description>Afterwords release notes</description>
         <language>en</language>
+        <item>
+            <title>Afterwords 1.1</title>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>1.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <pubDate>Tue, 09 Jun 2026 05:12:36 +0000</pubDate>
+            <enclosure
+                url="https://github.com/adrianwedd/afterwords-app/releases/download/v1.1/Afterwords.dmg"
+                sparkle:edSignature="LToA1knX9sRsgS2YHhD6r068WxYTavu5WS3yjGZktPY3haq3keQ/8965ah0lG3QPGXyZ4bY6bP5weV6ilDTNAg=="
+                length="3380307"
+                type="application/octet-stream" />
+        </item>
     </channel>
 </rss>
