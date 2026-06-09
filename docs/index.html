@@ -71,8 +71,7 @@
     /* Hero */
     #hero{padding:96px 0 88px;}
     .hero-h1{font-size:clamp(32px,6vw,48px);font-weight:500;line-height:1.15;letter-spacing:-0.03em;margin-bottom:16px;}
-    .hero-sub{font-size:18px;color:var(--fg-m);max-width:460px;margin-bottom:36px;line-height:1.6;}
-    .hero-note{font-family:var(--mono);font-size:12px;color:var(--fg-m);margin-top:20px;line-height:1.7;max-width:460px;}
+    .hero-sub{font-size:18px;color:var(--fg-m);max-width:420px;margin-bottom:36px;line-height:1.6;}
 
     .btn{height:36px;padding:0 16px;border-radius:4px;font-size:15px;font-weight:500;font-family:var(--sans);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;border:none;transition:opacity .12s;}
     .btn-acc{background:var(--acc);color:var(--bg);}
@@ -113,7 +112,6 @@
     /* Screenshots */
     .screenshots{display:flex;flex-direction:column;gap:1px;background:var(--bd);border:1px solid var(--bd);border-radius:4px;overflow:hidden;}
     .screen-item{background:var(--bg-up);padding:0;position:relative;overflow:hidden;}
-    .mock-cap{padding:14px 20px;font-family:var(--mono);font-size:12px;color:var(--fg-m);}
     /* Mock menubar screenshot */
     .mock-menubar{width:100%;background:var(--bg-dn);border-bottom:1px solid var(--bd);padding:12px 20px;display:flex;justify-content:flex-end;gap:16px;align-items:center;}
     .mock-menubar-icon{width:18px;height:18px;}
@@ -126,15 +124,15 @@
     /* Requirements */
     .req-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bd);border:1px solid var(--bd);border-radius:4px;overflow:hidden;}
     .req-cell{background:var(--bg-up);padding:16px 20px;}
-    .req-key{font-family:var(--mono);font-size:11px;color:var(--fg-m);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;}
+    .req-key{font-family:var(--mono);font-size:11px;color:var(--fg-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;}
     .req-val{font-size:15px;font-weight:500;}
 
     /* Footer */
     footer{padding:32px 0;}
-    .footer-row{display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--fg-m);}
+    .footer-row{display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--fg-d);}
     .footer-row a{color:var(--fg-m);text-decoration:none;}
     .footer-row a:hover{color:var(--fg);}
-    .footer-copy{font-family:var(--mono);font-size:12px;color:var(--fg-m);margin-top:16px;}
+    .footer-copy{font-family:var(--mono);font-size:12px;color:var(--fg-d);margin-top:16px;}
 
     @media(max-width:600px){
       #hero{padding:56px 0 64px;}
@@ -203,13 +201,12 @@
       </svg>
     </div>
 
-    <h1 class="hero-h1">afterwords for Mac</h1>
-    <p class="hero-sub">Start, stop, and watch your local voice server from the menu bar — and preview every voice without opening a terminal.</p>
+    <h1 class="hero-h1">afterwords<br>for Mac.</h1>
+    <p class="hero-sub">A menubar app for your local voice server.</p>
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
       <a href="https://github.com/adrianwedd/afterwords-app/releases" class="btn btn-acc">Download →</a>
       <a href="https://adrianwedd.github.io/afterwords/" class="btn btn-sec">afterwords local →</a>
     </div>
-    <p class="hero-note">Unsigned DMG — right-click &gt; Open on first launch. In-app updates are signed (Sparkle EdDSA).</p>
   </div>
 </section>
 
@@ -245,6 +242,10 @@
         <div class="feat-h"><span class="feat-n">06</span> Signed auto-updates</div>
         <p class="feat-p">Sparkle 2 keeps the app current from an EdDSA-signed appcast, so updates stay integrity-protected.</p>
       </div>
+      <div class="feat">
+        <div class="feat-h"><span class="feat-n">07</span> Mute / Unmute</div>
+        <p class="feat-p">Toggle TTS playback without stopping synthesis. The menu-bar icon switches to a muted-speaker glyph when active. Changes made via <code>afterwords mute</code> in the terminal are reflected within the next health-poll cycle.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -253,8 +254,8 @@
 <section id="screenshots">
   <div class="wrap">
     <div class="s-label">Screenshots</div>
-    <h2 class="s-title">Status, voices, and settings.</h2>
-    <p class="s-desc">See server status at a glance, browse and preview voices, and tweak settings — all from the menu bar. The illustrations below are stylized representations of the real app windows.</p>
+    <h2 class="s-title">Voice switching from the menubar.</h2>
+    <p class="s-desc">Manage your local server without touching the terminal. Switch voices, monitor status, trigger synthesis — from anywhere on your Mac.</p>
 
     <div class="screenshots">
       <!-- Mock screenshot 1: status popover (decorative) -->
@@ -282,85 +283,80 @@
           </div>
           <!-- Fake popover window -->
           <div class="mock-window">
-            <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-m);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--bd);">afterwords</div>
+            <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-d);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--bd);">afterwords</div>
             <div class="mock-window-row">
               <span style="color:var(--fg-m);font-size:13px;">Status</span>
               <span class="mock-val"><span class="mock-status"></span>Running</span>
             </div>
             <div class="mock-window-row">
-              <span style="color:var(--fg-m);font-size:13px;">Default voice</span>
+              <span style="color:var(--fg-m);font-size:13px;">Active voice</span>
               <span class="mock-val">picard</span>
+            </div>
+            <div class="mock-window-row">
+              <span style="color:var(--fg-m);font-size:13px;">Backend</span>
+              <span class="mock-val">qwen3-1.7b</span>
             </div>
             <div class="mock-window-row">
               <span style="color:var(--fg-m);font-size:13px;">Voices loaded</span>
               <span class="mock-val">110</span>
             </div>
             <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;gap:8px;flex-wrap:wrap;">
-              <div style="background:var(--bg);border:1px solid var(--bd);border-radius:3px;padding:5px 10px;font-size:12px;color:var(--fg-m);font-family:var(--mono);">Start</div>
-              <div style="background:var(--bg);border:1px solid var(--bd);border-radius:3px;padding:5px 10px;font-size:12px;color:var(--fg-m);font-family:var(--mono);">Stop</div>
               <div style="background:var(--bg);border:1px solid var(--bd);border-radius:3px;padding:5px 10px;font-size:12px;color:var(--fg-m);font-family:var(--mono);">Restart</div>
-            </div>
-            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
-              <div style="font-size:12px;color:var(--fg-m);font-family:var(--mono);">Logs</div>
-              <div style="font-size:12px;color:var(--fg-m);font-family:var(--mono);">·</div>
-              <div style="font-size:12px;color:var(--fg-m);font-family:var(--mono);">API</div>
-              <div style="font-size:12px;color:var(--fg-m);font-family:var(--mono);">·</div>
-              <div style="font-size:12px;color:var(--fg-m);font-family:var(--mono);">Voices…</div>
-              <div style="font-size:12px;color:var(--fg-m);font-family:var(--mono);">·</div>
-              <div style="font-size:12px;color:var(--fg-m);font-family:var(--mono);">Settings…</div>
+              <div style="background:var(--bg);border:1px solid var(--bd);border-radius:3px;padding:5px 10px;font-size:12px;color:var(--fg-m);font-family:var(--mono);">Quit</div>
             </div>
           </div>
         </div>
-        <div class="mock-cap">Server status &amp; controls</div>
+        <div style="padding:14px 20px;font-family:var(--mono);font-size:11px;color:var(--fg-d);">Server status panel</div>
       </div>
 
-      <!-- Mock screenshot 2: voices window (decorative) -->
+      <!-- Mock screenshot 2: voice switcher (decorative) -->
       <div class="screen-item" aria-hidden="true">
         <div style="background:var(--bg-dn);padding:24px 20px 20px;display:flex;justify-content:flex-end;">
           <div style="background:var(--bg-up);border:1px solid var(--bd);border-radius:8px;padding:4px;width:240px;">
-            <div style="display:flex;align-items:center;gap:6px;margin:4px 6px 8px;padding:6px 8px;background:var(--bg-dn);border:1px solid var(--bd);border-radius:6px;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#A09A8F" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
-              <span style="font-family:var(--mono);font-size:12px;color:var(--fg-m);">Search voices</span>
-            </div>
+            <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-d);padding:8px 10px 6px;">Switch voice</div>
             <div style="padding:8px 10px;border-radius:4px;background:#222220;display:flex;justify-content:space-between;align-items:center;font-size:13px;">
               <span style="font-family:var(--mono);color:#EDE8DF;">picard</span>
-              <span style="font-family:var(--mono);font-size:10px;color:#B87333;">default</span>
+              <span style="font-family:var(--mono);font-size:10px;color:#B87333;">active</span>
             </div>
-            <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-family:var(--mono);color:#A09A8F;">attenborough</span></div>
-            <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-family:var(--mono);color:#A09A8F;">data</span></div>
             <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-family:var(--mono);color:#A09A8F;">galadriel</span></div>
+            <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-family:var(--mono);color:#A09A8F;">attenborough</span></div>
             <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-family:var(--mono);color:#A09A8F;">snape</span></div>
+            <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-family:var(--mono);color:#A09A8F;">data</span></div>
             <div style="padding:8px 10px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-family:var(--mono);color:#A09A8F;">tilda</span></div>
-            <div style="font-family:var(--mono);font-size:10px;color:var(--fg-m);padding:8px 10px 6px;">Click to play a sample · double-click to set default</div>
           </div>
         </div>
-        <div class="mock-cap">Voices — search &amp; preview</div>
+        <div style="padding:14px 20px;font-family:var(--mono);font-size:11px;color:var(--fg-d);">Voice switcher</div>
       </div>
 
-      <!-- Mock screenshot 3: settings (decorative) -->
+      <!-- Mock screenshot 3: synthesis history (decorative) -->
       <div class="screen-item" aria-hidden="true">
         <div style="background:var(--bg-dn);padding:24px 20px 20px;display:flex;justify-content:flex-end;">
           <div style="background:var(--bg-up);border:1px solid var(--bd);border-radius:8px;padding:0;width:300px;overflow:hidden;">
-            <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-m);padding:10px 14px 8px;border-bottom:1px solid var(--bd);">Settings</div>
-            <div style="padding:12px 14px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-size:13px;color:#EDE8DF;">Launch at Login</span>
-              <span style="width:32px;height:18px;border-radius:9px;background:#B87333;position:relative;display:inline-block;"><span style="position:absolute;right:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#EDE8DF;"></span></span>
+            <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-d);padding:10px 14px 8px;border-bottom:1px solid var(--bd);">Recent</div>
+            <div style="padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-family:var(--mono);font-size:13px;color:#EDE8DF;">picard</div>
+                <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">14.2s · 103 KB</div>
+              </div>
+              <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">14:08</div>
             </div>
-            <div style="padding:12px 14px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-size:13px;color:#EDE8DF;">Auto-start Server</span>
-              <span style="width:32px;height:18px;border-radius:9px;background:#3A3A37;position:relative;display:inline-block;"><span style="position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#A09A8F;"></span></span>
+            <div style="padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-family:var(--mono);font-size:13px;color:#EDE8DF;">galadriel</div>
+                <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">9.8s · 71 KB</div>
+              </div>
+              <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">14:01</div>
             </div>
-            <div style="padding:12px 14px;border-bottom:1px solid var(--bd);">
-              <div style="font-size:12px;color:var(--fg-m);margin-bottom:5px;">CLI Path</div>
-              <div style="font-family:var(--mono);font-size:12px;color:#EDE8DF;background:var(--bg-dn);border:1px solid var(--bd);border-radius:4px;padding:5px 8px;">/opt/homebrew/bin/afterwords</div>
-            </div>
-            <div style="padding:12px 14px;">
-              <div style="font-size:12px;color:var(--fg-m);margin-bottom:5px;">Server Port</div>
-              <div style="font-family:var(--mono);font-size:12px;color:#EDE8DF;background:var(--bg-dn);border:1px solid var(--bd);border-radius:4px;padding:5px 8px;width:90px;">7860</div>
+            <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-family:var(--mono);font-size:13px;color:#EDE8DF;">picard</div>
+                <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">22.1s · 161 KB</div>
+              </div>
+              <div style="font-family:var(--mono);font-size:11px;color:#5C5852;">13:47</div>
             </div>
           </div>
         </div>
-        <div class="mock-cap">Settings</div>
+        <div style="padding:14px 20px;font-family:var(--mono);font-size:11px;color:var(--fg-d);">Synthesis history</div>
       </div>
     </div>
   </div>

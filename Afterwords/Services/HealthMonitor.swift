@@ -173,6 +173,7 @@ final class HealthMonitor: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.pollInFlight = false
+                self.cliExecutor.refreshMuteState()
                 self.handleHealthResponse(data: data, response: response, error: error)
                 self.scheduleNextPoll()
             }
