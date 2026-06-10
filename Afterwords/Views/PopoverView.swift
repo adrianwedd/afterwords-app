@@ -194,21 +194,12 @@ struct PopoverView: View {
         .padding(.vertical, 4)
     }
 
-    @ViewBuilder
     private var settingsRow: some View {
-        if #available(macOS 14.0, *) {
-            PopoverMenuRowContainer {
-                SettingsLink {
-                    PopoverMenuRowContent(icon: "gear", label: "Settings\u{2026}", meta: nil)
-                }
-                .buttonStyle(.plain)
-            }
-        } else {
-            PopoverMenuRow(icon: "gear", label: "Settings\u{2026}", meta: nil) {
-                NSApp.activate(ignoringOtherApps: true)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                }
+        PopoverMenuRow(icon: "gear", label: "Settings\u{2026}", meta: nil) {
+            NSApp.activate(ignoringOtherApps: true)
+            openWindow(id: "settings")
+            DispatchQueue.main.async {
+                NSApp.windows.first(where: { $0.title == "Settings" })?.makeKeyAndOrderFront(nil)
             }
         }
     }
@@ -241,24 +232,6 @@ private struct PopoverMenuRow: View {
     }
 }
 
-/// Wrapper that provides the hover highlight for containers (e.g. SettingsLink)
-/// that don't expose a plain button style.
-private struct PopoverMenuRowContainer<Content: View>: View {
-    let content: () -> Content
-    @State private var hovered = false
-
-    init(@ViewBuilder content: @escaping () -> Content) {
-        self.content = content
-    }
-
-    var body: some View {
-        content()
-            .background(hovered ? Color.primary.opacity(0.06) : .clear)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-            .onHover { hovered = $0 }
-            .padding(.horizontal, 6)
-    }
-}
 
 struct PopoverMenuRowContent: View {
     let icon: String
