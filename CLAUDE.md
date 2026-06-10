@@ -27,9 +27,13 @@ The `.xcodeproj/project.pbxproj` is committed to git (see `.gitignore`). `make p
 
 ```
 AfterwordsApp (entry point)
-  ├── MenuBarExtra → PopoverView
-  ├── Settings scene → SettingsView
-  └── Window("Voices") → VoiceListView
+  ├── MenuBarExtra → PopoverView (contains StatusView, EqualizerView)
+  ├── Window("Settings", id: "settings") → SettingsView
+  └── Window("Voices",   id: "voice-list") → VoiceListView (uses EqualizerView)
+
+All three scenes use .preferredColorScheme(.dark). Accent colour is copper
+#B87333 (AccentColor.colorset). Design-system tokens (dsElevated, dsSunken,
+dsBorder, dsGreen) live as Color extensions in EqualizerView.swift.
 
 Services (all @MainActor ObservableObject, owned as @StateObject in AfterwordsApp, injected into views via @EnvironmentObject):
   ├── CLIExecutor        — runs `afterwords` CLI via Foundation.Process with explicit PATH injection

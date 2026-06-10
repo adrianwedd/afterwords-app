@@ -76,13 +76,13 @@ server directly (e.g. its `/synthesize` HTTP endpoint).
 
 There is no embedded screenshot in this repo. In short:
 
-- The **popover** (click the menu-bar icon) shows a status line, the
-  Start/Stop/Restart row, the Logs / API / Mute row, a backend/voice count when
-  Running, the default voice (if set), and buttons for *Voices…*, *Settings…*,
-  and *Check for Updates…*.
+- The **popover** (click the menu-bar icon) is a fixed-dark 300 pt wide panel:
+  a header with waveform icon, a sunken status hero card (dot + headline +
+  sub-text + animated equalizer or spinner), a Start/Stop/Restart transport row,
+  a Logs / API / Mute utility row, a voice chip showing the default voice, and a
+  footer with *Voices…*, *Settings…*, and *Check for Updates…*.
 - The **Voices window** is a search box over an alphabetical voice list with a
-  footer reminder: "Click to play a sample. Double-click or right-click to set
-  as default."
+  footer reminder: "Click to play a sample. Star to set as default."
 
 ## Requirements
 
@@ -146,11 +146,16 @@ make clean      # Remove the generated .xcodeproj and build/
 
 ```
 AfterwordsApp (@main entry point)
-  ├── MenuBarExtra(.window) → PopoverView   (Status, Start/Stop/Restart,
-  │                                           Logs, API, Voices…, Settings…,
-  │                                           Check for Updates…)
-  ├── Settings              → SettingsView  (General + Advanced tabs)
-  └── Window("Voices")      → VoiceListView (searchable voice list, samples)
+  ├── MenuBarExtra(.window) → PopoverView        (header, StatusView hero card,
+  │                           StatusView          Start/Stop/Restart transport,
+  │                           EqualizerView        Logs/API/Mute utility row,
+  │                                               voice chip, footer menu items)
+  ├── Window("Settings", id:"settings") → SettingsView  (General + Advanced tabs)
+  └── Window("Voices",   id:"voice-list") → VoiceListView (searchable list, samples)
+
+All three scenes force .preferredColorScheme(.dark) and use the copper accent
+(#B87333). Design-system colours (dsElevated/dsSunken/dsBorder/dsGreen) are
+defined as Color extensions in EqualizerView.swift and shared across views.
 
 Services (all @MainActor final class, injected via @EnvironmentObject):
   ├── CLIExecutor       — runs `afterwords` via Foundation.Process with explicit
@@ -237,9 +242,8 @@ state-machine transitions can be driven without real network calls. Run
 ## Releasing
 
 See [`RELEASING.md`](RELEASING.md) for the version-bump / DMG / Sparkle appcast
-EdDSA-signing workflow. `appcast.xml` is intentionally an empty (but valid)
-channel until a signed release is published — Sparkle silently rejects items
-without a valid `sparkle:edSignature`.
+EdDSA-signing workflow. Sparkle silently rejects items without a valid
+`sparkle:edSignature`; only sign and publish the appcast after the DMG is final.
 
 ## Contributing
 

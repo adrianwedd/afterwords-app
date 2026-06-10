@@ -167,8 +167,8 @@ asset → and only then commit the appcast. The appcast `length` and
 nothing goes live to existing installs until the final commit.
 
 In the examples below, substitute the real version. The current shipped values
-are `CFBundleShortVersionString = 1.0` and `CFBundleVersion = 1`, so the first
-real release would be `1.0` / `1` (already set) or the next increment.
+are `CFBundleShortVersionString = 1.1` and `CFBundleVersion = 1`, so the next
+release would be `1.2` / `2` (or whichever increment is appropriate).
 
 ### 1. Bump the version
 
