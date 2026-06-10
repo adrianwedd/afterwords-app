@@ -32,6 +32,16 @@ struct EqualizerView: View {
     }
 }
 
+// MARK: — Design system colour tokens
+
+extension Color {
+    static let dsCanvas   = Color(red: 28/255,  green: 28/255,  blue: 26/255)
+    static let dsElevated = Color(red: 34/255,  green: 34/255,  blue: 32/255)
+    static let dsSunken   = Color(red: 20/255,  green: 20/255,  blue: 18/255)
+    static let dsBorder   = Color(red: 58/255,  green: 58/255,  blue: 55/255)
+    static let dsGreen    = Color(red: 107/255, green: 158/255, blue: 107/255)
+}
+
 private struct EqualizerBar: View {
     let color: Color
     let maxHeight: CGFloat

@@ -31,6 +31,7 @@ struct AfterwordsApp: App {
                 .environmentObject(healthMonitor)
                 .environmentObject(cliExecutor)
                 .environmentObject(updaterController)
+                .preferredColorScheme(.dark)
         } label: {
             let iconName = cliExecutor.isMuted && healthMonitor.state.isRunning
                 ? "speaker.slash.circle.fill"
@@ -43,16 +44,19 @@ struct AfterwordsApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Settings {
+        Window("Settings", id: "settings") {
             SettingsView()
                 .environmentObject(cliExecutor)
                 .environmentObject(updaterController)
+                .preferredColorScheme(.dark)
         }
+        .windowResizability(.contentSize)
 
         Window("Voices", id: "voice-list") {
             VoiceListView()
                 .environmentObject(healthMonitor)
                 .environmentObject(samplePlayer)
+                .preferredColorScheme(.dark)
         }
         .windowResizability(.contentSize)
     }

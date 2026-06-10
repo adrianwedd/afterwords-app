@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Voice browser window — flat alphabetical list with a search box.
-/// Single click plays a sample; double-click sets the voice as preferred
-/// (stored in UserDefaults under `"preferredVoice"`, displayed in the popover).
 struct VoiceListView: View {
     @EnvironmentObject var healthMonitor: HealthMonitor
     @EnvironmentObject var samplePlayer: SamplePlayer
@@ -32,27 +29,22 @@ struct VoiceListView: View {
         }
         .frame(minWidth: 360, minHeight: 420)
         .onDisappear {
-            // SamplePlayer is an app-level StateObject; without stopping here,
-            // a fetch-in-flight or in-progress NSSound would keep playing
-            // after the user closed the Voices window (Gemini QA HIGH).
             samplePlayer.stopPlayback()
         }
         .onChange(of: voices) { newVoices in
-            // Clear the selection whenever the voice set changes — covers
-            // both server stop (empty list) and restarts that swap voices
-            // while keeping the same count.
-            // Note: uses the pre-macOS-14 onChange(of:perform:) API so the
-            // app remains compatible with the macOS 13 deployment target.
             if let selected = selectedVoice, !newVoices.contains(selected) {
                 selectedVoice = nil
             }
         }
     }
 
+    // MARK: — Header
+
     private var header: some View {
-        HStack {
+        HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
+                .font(.system(size: 13))
             TextField("Search voices", text: $searchQuery)
                 .textFieldStyle(.plain)
             if !searchQuery.isEmpty {
@@ -68,102 +60,116 @@ struct VoiceListView: View {
         .padding(10)
     }
 
+    // MARK: — List
+
     @ViewBuilder
     private var list: some View {
         if voices.isEmpty {
-            VStack(spacing: 8) {
-                Text("Voice list available only when the server is running.")
+            VStack(spacing: 10) {
+                Image(systemName: "waveform.slash")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.tertiary)
+                Text("Voice list available when the server is running.")
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                 Text(healthMonitor.state.displayName)
-                    .font(.caption)
+                    .font(.caption.monospaced())
                     .foregroundStyle(.tertiary)
             }
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if filteredVoices.isEmpty {
-            Text("No voices match \u{201C}\(searchQuery)\u{201D}")
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.tertiary)
+                Text("No voices match \u{201C}\(searchQuery)\u{201D}")
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             List(filteredVoices, id: \.self, selection: $selectedVoice) { voice in
                 row(for: voice)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 10))
                     .contentShape(Rectangle())
-                    // Two stacked tap recognizers on the same view caused
-                    // duplicate playSample calls (all 3 QA agents flagged
-                    // this on the previous revision). Now: single-click
-                    // plays the sample; double-click ONLY sets the default
-                    // (single-tap from the first click already started
-                    // playback, so we don't kick a second one).
                     .onTapGesture(count: 2) {
-                        preferredVoice = voice
+                        preferredVoice = voice == preferredVoice ? "" : voice
                     }
                     .onTapGesture(count: 1) {
                         selectedVoice = voice
                         samplePlayer.playSample(voice: voice)
                     }
-                    // Right-click backup for "set as default" — SwiftUI's
-                    // tap-count discrimination has shifted across macOS
-                    // releases, so we don't want the context menu to be
-                    // the only reliable path even if double-click breaks.
                     .contextMenu {
                         Button("Play Sample") {
                             samplePlayer.playSample(voice: voice)
                         }
+                        Divider()
                         Button(voice == preferredVoice ? "Clear Default" : "Set as Default") {
                             preferredVoice = voice == preferredVoice ? "" : voice
                         }
                     }
             }
-            .listStyle(.inset(alternatesRowBackgrounds: true))
+            .listStyle(.inset)
         }
     }
 
     private func row(for voice: String) -> some View {
-        HStack {
+        let isDefault = voice == preferredVoice
+        let isPlaying = samplePlayer.playingVoice == voice
+
+        return HStack(spacing: 8) {
             Text(voice)
-                .font(.body.monospaced())
-            if voice == preferredVoice {
-                Text("default")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 3)
-                            .stroke(.secondary, lineWidth: 0.5)
-                    )
-            }
+                .font(.system(.body, design: .monospaced))
+                .foregroundStyle(isDefault ? Color.accentColor : Color.primary)
+
             Spacer()
-            if samplePlayer.playingVoice == voice {
+
+            if isPlaying {
                 EqualizerView(active: true, color: .accentColor, barCount: 5, maxHeight: 12)
+                    .padding(.trailing, 2)
             }
+
+            Button {
+                preferredVoice = isDefault ? "" : voice
+            } label: {
+                Image(systemName: isDefault ? "star.fill" : "star")
+                    .font(.system(size: 13))
+                    .foregroundStyle(isDefault ? Color.accentColor : Color.secondary.opacity(0.6))
+            }
+            .buttonStyle(.plain)
+            .contentShape(Rectangle().size(CGSize(width: 28, height: 28)))
         }
+        .frame(height: 34)
     }
+
+    // MARK: — Footer
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack {
+            HStack(spacing: 8) {
                 Text("\(filteredVoices.count) voice\(filteredVoices.count == 1 ? "" : "s")")
-                    .font(.caption)
+                    .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
+
                 if let playing = samplePlayer.playingVoice {
                     EqualizerView(active: true, color: .accentColor, barCount: 5, maxHeight: 10)
                     Text("playing \(playing)")
                         .font(.caption.monospaced())
                         .foregroundStyle(Color.accentColor)
                 }
+
                 Spacer()
+
                 if !preferredVoice.isEmpty {
-                    Text("Default: ")
-                        .font(.caption)
+                    Text("default: ")
+                        .font(.caption.monospaced())
                         .foregroundColor(.secondary)
                     + Text(preferredVoice)
                         .font(.caption.monospaced())
                         .foregroundColor(.primary)
                 }
             }
-            Text("Click to play a sample. Double-click or right-click to set as default.")
+            Text("Click to play a sample. Star to set as default.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
             if let err = samplePlayer.lastError {

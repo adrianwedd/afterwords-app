@@ -25,11 +25,11 @@ struct StatusView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .background(Color.primary.opacity(0.04))
+        .background(Color.dsElevated)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5)
+                .strokeBorder(Color.dsBorder, lineWidth: 0.5)
         )
     }
 
@@ -37,7 +37,7 @@ struct StatusView: View {
         switch healthMonitor.state {
         case .stopped:  return .secondary
         case .starting: return .yellow
-        case .running:  return .green
+        case .running:  return .dsGreen
         case .error:    return .red
         }
     }
@@ -68,7 +68,7 @@ struct StatusView: View {
     @ViewBuilder
     private var trailing: some View {
         if healthMonitor.state.isRunning {
-            EqualizerView(active: true, color: .green, barCount: 11, maxHeight: 14)
+            EqualizerView(active: true, color: .dsGreen, barCount: 11, maxHeight: 14)
         } else if healthMonitor.state.isStarting {
             ProgressView()
                 .scaleEffect(0.65)
