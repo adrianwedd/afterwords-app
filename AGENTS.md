@@ -7,7 +7,7 @@
 This is a macOS menu-bar app built with SwiftUI and XcodeGen.
 
 - `Afterwords/` contains the app source.
-  - `Views/` holds SwiftUI screens such as `PopoverView.swift`, `SettingsView.swift`, and `VoiceListView.swift`.
+  - `Views/` holds SwiftUI screens: `PopoverView.swift`, `StatusView.swift`, `EqualizerView.swift`, `SettingsView.swift`, and `VoiceListView.swift`. Design-system colour tokens are defined as a `Color` extension in `EqualizerView.swift` and shared across all views.
   - `Services/` contains app logic like `CLIExecutor.swift`, `HealthMonitor.swift`, `SamplePlayer.swift`, and `UpdaterController.swift` (Sparkle 2 auto-update).
   - `Models/` holds lightweight data types such as `HealthInfo.swift` and `ServerState.swift`.
 - `AfterwordsTests/` contains XCTest coverage for the app and service layer.
