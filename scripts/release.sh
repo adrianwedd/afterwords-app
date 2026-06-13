@@ -88,11 +88,20 @@ resume_from_published() {
   SIGN_UPDATE="$(find build/DerivedData ~/Library/Developer/Xcode/DerivedData \
     -name sign_update -type f 2>/dev/null | head -n1)"
   [ -n "$SIGN_UPDATE" ] || die "sign_update not found — run 'make dmg' once to fetch Sparkle"
+  # Integrity: never sign bytes we can't verify. The original release run
+  # wrote the DMG's SHA-256 into the release notes ("Expected: `<sha>`") —
+  # treat that as ground truth for the re-downloaded asset.
+  local expected_sha actual_sha
+  expected_sha="$(gh release view "$TAG" --json body --jq .body \
+    | sed -n 's/.*Expected: `\([0-9a-f]\{64\}\)`.*/\1/p' | head -n1)"
+  [ -n "$expected_sha" ] || die "release $TAG body has no recorded SHA-256 — refusing to re-sign unverifiable bytes (verify the asset manually, then add the 'Expected: \`<sha>\`' line to the release notes)"
+  actual_sha="$(shasum -a 256 "$tmp/Afterwords.dmg" | awk '{print $1}')"
+  [ "$actual_sha" = "$expected_sha" ] || die "downloaded DMG SHA-256 ($actual_sha) does not match the published release notes ($expected_sha) — possible tampering, aborting"
   local out; out="$("$SIGN_UPDATE" "$tmp/Afterwords.dmg")"
   SIGNATURE="$(printf '%s' "$out" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')"
   SIGN_LEN="$(printf '%s' "$out" | sed -n 's/.*length="\([0-9]*\)".*/\1/p')"
   [ -n "$SIGNATURE" ] && [ -n "$SIGN_LEN" ] || die "could not parse sign_update output: $out"
-  SHA256="$(shasum -a 256 "$tmp/Afterwords.dmg" | awk '{print $1}')"
+  SHA256="$actual_sha"
   HIGHEST="$(python3 "$LIB" highest-version "$APPCAST")"
   BUNDLE=$(( ${HIGHEST:-0} + 1 ))
   PUBDATE="$(date -u +'%a, %d %b %Y %H:%M:%S +0000')"
