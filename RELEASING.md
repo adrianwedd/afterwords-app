@@ -75,6 +75,12 @@ Before cutting a release, confirm all of the following:
       (`FeOcV5PkLWfalq0xh+eMPzFNYDU3rQso95Ix+RvLl9U=`). Without it you cannot
       sign the DMG, and an unsigned item is silently rejected by every install.
       See **Key loss / recovery** if it is missing.
+- [ ] **EdDSA key backup verified.** The Sparkle private key exists ONLY in the
+      local Keychain. Before any release, confirm an encrypted offline backup
+      exists: export with
+      `security find-generic-password -s "https://sparkle-project.org" -w`
+      into your password manager (as a secure note), then verify you can read
+      it back. If this key is lost, shipped apps can never auto-update again.
 - [ ] **Release notes prepared** (a short summary of changes — used in the
       GitHub Release body; see the note in step 7 on where it lives).
 
