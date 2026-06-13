@@ -43,7 +43,11 @@ Be honest with yourself and with users about what protects a release today:
   there is no notarization, Gatekeeper cannot detect a tampered first install.
   To compensate, **publish the DMG's SHA-256 in each GitHub Release body** so
   users can verify the bytes they downloaded by hand. This is a documented
-  recommendation from `docs/security-review-2026-05-29.md` (Finding 2).
+  recommendation from `docs/security-review-2026-05-29.md` (Finding 2). Note this
+  Release-body SHA is a **user-facing convenience only**: the release pipeline
+  itself never trusts it (the Release body is mutable). The pipeline's trust
+  anchor is the git-committed `release-manifest/<version>.sha256` — see
+  *Cutting a release → The SHA-256 manifest is the resume trust anchor*.
 - **Gatekeeper on auto-update.** TODO during first real release: verify whether
   a Sparkle-delivered update to this unsigned app re-triggers a Gatekeeper
   right-click→Open prompt on *each* update, or only the first manual install.
@@ -75,6 +79,12 @@ Before cutting a release, confirm all of the following:
       (`FeOcV5PkLWfalq0xh+eMPzFNYDU3rQso95Ix+RvLl9U=`). Without it you cannot
       sign the DMG, and an unsigned item is silently rejected by every install.
       See **Key loss / recovery** if it is missing.
+- [ ] **EdDSA key backup verified.** The Sparkle private key exists ONLY in the
+      local Keychain. Before any release, confirm an encrypted offline backup
+      exists: export with
+      `security find-generic-password -s "https://sparkle-project.org" -w`
+      into your password manager (as a secure note), then verify you can read
+      it back. If this key is lost, shipped apps can never auto-update again.
 - [ ] **Release notes prepared** (a short summary of changes — used in the
       GitHub Release body; see the note in step 7 on where it lives).
 
@@ -148,12 +158,44 @@ Review the printed item and SHA-256, then go live:
 make release VERSION=1.1 PUBLISH=1
 ```
 
-This commits the bump, tags `v1.1` on that commit, creates the GitHub Release
-(DMG attached, SHA-256 in the body), re-downloads the published asset to
-re-verify its length and SHA-256, then splices the item into `appcast.xml` and
-pushes `main`. If a prior run died after the release was created, re-running
-with `PUBLISH=1` **resumes from the published bytes** (it re-signs the existing
-asset rather than rebuilding) and finishes the appcast.
+This commits the bump **and the SHA-256 manifest** (see below), tags `v1.1` on
+that commit, creates the GitHub Release (DMG attached, SHA-256 in the body),
+re-downloads the published asset to re-verify its length and SHA-256, then
+splices the item into `appcast.xml` and pushes `main`. If a prior run died after
+the release was created, re-running with `PUBLISH=1` **resumes from the
+published bytes** (it re-signs the existing asset rather than rebuilding) and
+finishes the appcast.
+
+#### The SHA-256 manifest is the resume trust anchor
+
+At build time the script writes the built DMG's SHA-256 to a **git-committed**
+file, `release-manifest/<version>.sha256` (standard `shasum` format), and
+commits it in the same commit it tags. This file — not the GitHub Release body —
+is the **single source of truth** the resume path trusts.
+
+When `PUBLISH=1` finds the tag already exists, `resume_from_published`:
+
+1. downloads the published `Afterwords.dmg`,
+2. reads the expected SHA-256 from `release-manifest/<version>.sha256` (in git),
+3. **fails closed** if that manifest file is missing or has no valid SHA, and
+4. aborts if the downloaded asset's SHA-256 does not match the committed value.
+
+Only after that trusted-SHA check passes does it run `sign_update`. It does
+**not** read the SHA from the GitHub Release body and has **no fallback** to it.
+
+This closes a signing-oracle hole: the Release body is mutable, so anyone who
+can replace the release asset could also edit the notes to a matching SHA and
+trick the script into EdDSA-signing attacker-controlled bytes for every existing
+install. Git history is the trust anchor instead — an attacker who swaps the
+asset cannot rewrite the committed manifest, so the tampered bytes fail
+verification and are never signed.
+
+If you need to resume a release whose manifest is missing (e.g. cut before this
+change, or lost), do **not** hand-edit the release notes — run a fresh local
+build (`make release VERSION=<version>`) so the SHA is regenerated from bytes you
+built locally, then resume. You can independently verify a published asset
+against the manifest with `shasum -a 256 -c release-manifest/<version>.sha256`
+(run from the directory containing `Afterwords.dmg`).
 
 The manual steps below remain the source of truth the script automates, and the
 fallback if it ever breaks.
@@ -204,13 +246,28 @@ verbatim into the appcast `<enclosure>` in step 5.
 
 ### 4. Compute and record the SHA-256
 
-Capture the checksum (for the GitHub Release body) and the byte length (to
-cross-check against `sign_update`):
+Capture the checksum and the byte length (to cross-check against `sign_update`):
 
 ```bash
 shasum -a 256 build/Release/Afterwords.dmg
 stat -f%z build/Release/Afterwords.dmg   # must equal the length from step 3
 ```
+
+Then **commit the SHA-256 to the manifest** — this is the trust anchor a later
+resume verifies the published asset against (see *The SHA-256 manifest is the
+resume trust anchor* above). The automated `make release` path does this for
+you; doing it by hand keeps the manual fallback consistent:
+
+```bash
+mkdir -p release-manifest
+shasum -a 256 build/Release/Afterwords.dmg \
+  | awk '{print $1"  Afterwords.dmg"}' > release-manifest/<version>.sha256
+# commit it in the same commit you tag (step 6)
+```
+
+You will also paste the SHA-256 into the GitHub Release body (step 7) as a
+user-facing manual-verification hint — but the pipeline never trusts that
+mutable body; it trusts only the committed manifest above.
 
 ### 5. Write the new appcast `<item>` (do NOT commit yet)
 
@@ -256,13 +313,19 @@ not correctness.
 
 ### 6. Tag and push
 
+Commit the version bump **and the SHA manifest** from step 4 first, so the
+trusted SHA is anchored in git history at the tag, then tag that commit:
+
 ```bash
+git add Afterwords/Info.plist release-manifest/1.1.sha256
+git commit -m "chore(release): bump to 1.1 + record DMG SHA-256 manifest"
 git tag v1.1
 git push origin v1.1
 ```
 
 (There are no tags yet — `v1.1` would be the first. Match the tag to
-`CFBundleShortVersionString`.)
+`CFBundleShortVersionString`. The manifest filename uses the bare version,
+e.g. `release-manifest/1.1.sha256`, matching what `make release` writes.)
 
 ### 7. Create the GitHub Release with the exact signed DMG
 
