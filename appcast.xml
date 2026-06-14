@@ -16,6 +16,18 @@
         <description>Afterwords release notes</description>
         <language>en</language>
         <item>
+            <title>Afterwords 1.2</title>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <pubDate>Sun, 14 Jun 2026 23:42:37 +0000</pubDate>
+            <enclosure
+                url="https://github.com/adrianwedd/afterwords-app/releases/download/v1.2/Afterwords.dmg"
+                sparkle:edSignature="c4JdYjPNG5ypX694Gfma9NP+qHMrVW2gcLsJdEuBWAAP0Pr7r3xbDcAvymcI99s6vml9eKXgUcqkLJfxeFzTBQ=="
+                length="3447954"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Afterwords 1.1</title>
             <sparkle:version>1</sparkle:version>
             <sparkle:shortVersionString>1.1</sparkle:shortVersionString>
