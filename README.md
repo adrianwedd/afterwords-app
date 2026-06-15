@@ -61,6 +61,8 @@ but separate sibling projects, which it does not bundle or manage:
   - *CLI Path* override with an Auto-detect button.
   - *Server Port* — **UI-only**: it only changes which URL the app polls; it
     does **not** reconfigure the running server's bind port.
+  - *Automatically check for updates* — toggles Sparkle's background update
+    checks (about once a day).
 - **Auto-updates** via Sparkle 2 with an EdDSA-signed appcast
   (*Check for Updates…* in the popover).
 

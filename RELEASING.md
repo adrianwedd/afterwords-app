@@ -209,8 +209,8 @@ asset → and only then commit the appcast. The appcast `length` and
 nothing goes live to existing installs until the final commit.
 
 In the examples below, substitute the real version. The current shipped values
-are `CFBundleShortVersionString = 1.1` and `CFBundleVersion = 1`, so the next
-release would be `1.2` / `2` (or whichever increment is appropriate).
+are `CFBundleShortVersionString = 1.2` and `CFBundleVersion = 2`, so the next
+release would be `1.3` / `3` (or whichever increment is appropriate).
 
 ### 1. Bump the version
 
@@ -302,14 +302,10 @@ Example:
 </item>
 ```
 
-**First release:** `appcast.xml` currently has **no `<item>`s** (the empty
-channel is intentional — see the header comment in the file) and there are **no
-git tags yet**. For this first release you are simply adding the one and only
-item.
-
-**Subsequent releases:** keep the previous item(s) below the new one. Sparkle
-picks the highest `sparkle:version` it understands, so order is for readability,
-not correctness.
+**Adding a release:** `appcast.xml` already contains the shipped items (1.2,
+1.1) and tags `v1.1` / `v1.2` exist. Keep the previous item(s) below the new one
+— Sparkle picks the highest `sparkle:version` it understands, so order is for
+readability, not correctness.
 
 ### 6. Tag and push
 
