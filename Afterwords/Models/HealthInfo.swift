@@ -10,6 +10,21 @@ struct HealthInfo: Equatable, Codable {
         let supportedLangs: [String]
     }
 
+    /// The backend to surface as "the" active one in the UI.
+    ///
+    /// The server preloads every experimental backend whose deps are installed,
+    /// and `loadedBackends` is sorted alphabetically — so `.first` is whatever
+    /// sorts first (e.g. `cosyvoice2`), an experimental backend, not the one
+    /// doing the work. qwen3 is the recommended/default cloning path and the
+    /// model that actually serves synthesis, so prefer it; fall back to the
+    /// first loaded backend only when no qwen3 variant is present.
+    var primaryBackend: BackendInfo? {
+        loadedBackends.first { $0.name == "qwen3-0.6b" }
+            ?? loadedBackends.first { $0.name == "qwen3-1.7b" }
+            ?? loadedBackends.first { $0.name.hasPrefix("qwen3") }
+            ?? loadedBackends.first
+    }
+
     // loaded_backends is a dict keyed by backend name — decode manually.
     // voices, loaded_backends, and supported_langs all use decodeIfPresent so
     // a server emitting `null` (or omitting the key) decodes as an empty

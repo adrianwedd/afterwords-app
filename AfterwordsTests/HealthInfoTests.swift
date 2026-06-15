@@ -120,4 +120,59 @@ final class HealthInfoTests: XCTestCase {
         XCTAssertEqual(info.loadedBackends.count, 2)
         XCTAssertTrue(info.loadedBackends.allSatisfy { $0.supportedLangs.isEmpty })
     }
+
+    // MARK: - primaryBackend
+
+    func testPrimaryBackendPrefersQwen3OverAlphabeticallyFirstBackend() throws {
+        // The server preloads every experimental backend whose deps are installed,
+        // and loadedBackends is sorted alphabetically — so .first is "cosyvoice2".
+        // The status line must surface qwen3 (the default/serving backend) instead.
+        let json = """
+        {
+            "status": "ok",
+            "loaded_backends": {
+                "cosyvoice2": {"supported_langs": ["en"]},
+                "dia2": {"supported_langs": ["en"]},
+                "qwen3-0.6b": {"supported_langs": ["en"]},
+                "xtts-v2": {"supported_langs": ["en"]}
+            },
+            "voices": []
+        }
+        """.data(using: .utf8)!
+
+        let info = try JSONDecoder().decode(HealthInfo.self, from: json)
+        // The trap this guards against: .first is the alphabetically-first backend.
+        XCTAssertEqual(info.loadedBackends.first?.name, "cosyvoice2")
+        XCTAssertEqual(info.primaryBackend?.name, "qwen3-0.6b")
+    }
+
+    func testPrimaryBackendPrefers06bOver17b() {
+        let info = HealthInfo(status: "ok", loadedBackends: [
+            HealthInfo.BackendInfo(name: "qwen3-1.7b", supportedLangs: ["en"]),
+            HealthInfo.BackendInfo(name: "qwen3-0.6b", supportedLangs: ["en"]),
+        ], voices: [])
+        XCTAssertEqual(info.primaryBackend?.name, "qwen3-0.6b")
+    }
+
+    func testPrimaryBackendMatchesAnyQwen3VariantWhenNoExactMatch() {
+        // A future qwen3 variant (no exact 0.6b/1.7b) is still preferred over experimental backends.
+        let info = HealthInfo(status: "ok", loadedBackends: [
+            HealthInfo.BackendInfo(name: "cosyvoice2", supportedLangs: ["en"]),
+            HealthInfo.BackendInfo(name: "qwen3-4b", supportedLangs: ["en"]),
+        ], voices: [])
+        XCTAssertEqual(info.primaryBackend?.name, "qwen3-4b")
+    }
+
+    func testPrimaryBackendFallsBackToFirstWhenNoQwen3() {
+        let info = HealthInfo(status: "ok", loadedBackends: [
+            HealthInfo.BackendInfo(name: "cosyvoice2", supportedLangs: ["en"]),
+            HealthInfo.BackendInfo(name: "voxtral", supportedLangs: ["en"]),
+        ], voices: [])
+        XCTAssertEqual(info.primaryBackend?.name, "cosyvoice2")
+    }
+
+    func testPrimaryBackendIsNilWhenNoBackendsLoaded() {
+        let info = HealthInfo(status: "ok", loadedBackends: [], voices: [])
+        XCTAssertNil(info.primaryBackend)
+    }
 }

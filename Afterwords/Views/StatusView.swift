@@ -58,7 +58,7 @@ struct StatusView: View {
         case .starting:
             return "Waiting for the first healthy /health poll."
         case .running(let info):
-            let backend = info.loadedBackends.first?.name ?? "\u{2014}"
+            let backend = info.primaryBackend?.name ?? "\u{2014}"
             return "\(backend) \u{00B7} \(info.voices.count) voice\(info.voices.count == 1 ? "" : "s") loaded"
         case .error(let message):
             return message
