@@ -66,7 +66,7 @@ Services (all @MainActor ObservableObject, owned as @StateObject in AfterwordsAp
 - **Port range 1024-65535, default 7860** — sub-1024 ports are rejected (`setPort` clamps; `loadPort` falls back to `defaultPort`) because the launchd LaunchAgent runs unprivileged and cannot bind privileged ports (CLIExecutor.swift:18-40)
 - **Quit does NOT stop the server** — launchd owns the lifecycle; the app only fires `afterwords start/stop/restart` (fire-and-forget) and treats GET /health as the single source of truth. Never add PID/process monitoring or ID tracking; quitting the app does not stop the server
 - **Port is UI-only** — changing `CLIExecutor.port` only affects which URL `HealthMonitor` polls; it does not reconfigure the running server's bind port
-- **`HealthInfo.loadedBackends`** is decoded from a JSON dict (keyed by backend name), not an array — the custom `Codable` implementation handles this
+- **`HealthInfo.loadedBackends`** is decoded from a JSON dict (keyed by backend name), not an array — the custom `Codable` implementation handles this. The status hero picks the active backend via `HealthInfo.primaryBackend` (prefers `qwen3-0.6b`, then `qwen3-1.7b`, then any `qwen3*`, else the first), not alphabetical order
 - **Launch-at-Login toggle uses `Binding(get:set:)`** — programmatic writes to the `launchAtLogin` `@State` property (e.g. from `syncLaunchAtLogin`) never fire the Binding setter; only user interaction through the Toggle does. This avoids re-entrancy with `SMAppService` without requiring a guard flag or `DispatchQueue.main.async` release
 
 ## Coding conventions
@@ -94,5 +94,5 @@ This is the complete feature set an assistant editing views may touch. Do not ad
 - **Start / Stop / Restart** buttons (PopoverView).
 - **Logs** button opens `/tmp/claude-tts-server.log` in Console.app via `NSWorkspace` (CLIExecutor.openLogs, 147-159); **API** button opens `http://localhost:<port>` in the browser (PopoverView:64-70).
 - **Voices window**: flat alphabetical list with a search box. Single-click plays a fixed-phrase sample (`"Hello. This is the <voice> voice."`, SamplePlayer.swift:55) via GET /synthesize; double-click or right-click sets the default/preferred voice (`preferredVoice` in UserDefaults).
-- **Settings**: Launch at Login, Auto-start Server, CLI path override, server port (port is UI-only — see Key design decisions).
+- **Settings**: Launch at Login, Auto-start Server, Automatically check for updates, CLI path override, server port (port is UI-only — see Key design decisions).
 - **Sparkle 2 auto-updates** via an EdDSA-signed appcast. Distribution today is an unsigned, un-notarized DMG (right-click > Open on first launch); auto-updates are integrity-protected by Sparkle's EdDSA signature.
