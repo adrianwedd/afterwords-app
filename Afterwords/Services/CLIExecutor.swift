@@ -148,10 +148,18 @@ final class CLIExecutor: ObservableObject {
 
     func toggleMute() {
         if isMuted {
-            try? FileManager.default.removeItem(atPath: muteFilePath)
+            do {
+                try FileManager.default.removeItem(atPath: muteFilePath)
+            } catch {
+                lastError = "Could not unmute: \(error.localizedDescription)"
+            }
         } else {
-            FileManager.default.createFile(atPath: muteFilePath, contents: nil)
+            if !FileManager.default.createFile(atPath: muteFilePath, contents: nil) {
+                lastError = "Could not mute: failed to create \(muteFilePath)"
+            }
         }
+        // The sentinel file remains the source of truth — a failed toggle
+        // leaves isMuted matching reality, with lastError explaining why.
         isMuted = FileManager.default.fileExists(atPath: muteFilePath)
     }
 

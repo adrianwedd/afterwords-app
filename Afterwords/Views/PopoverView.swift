@@ -239,7 +239,7 @@ private struct PopoverMenuRow: View {
 }
 
 
-struct PopoverMenuRowContent: View {
+private struct PopoverMenuRowContent: View {
     let icon: String
     let label: String
     let meta: String?
