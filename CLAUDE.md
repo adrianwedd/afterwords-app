@@ -94,6 +94,7 @@ This is the complete feature set an assistant editing views may touch. Do not ad
 - **Start / Stop / Restart** buttons (PopoverView).
 - **Logs** button opens `/tmp/claude-tts-server.log` in Console.app via `NSWorkspace` (CLIExecutor.openLogs, 147-159); **API** button opens `http://localhost:<port>` in the browser (PopoverView:64-70).
 - **Voices window**: flat alphabetical list with a search box. Single-click plays a fixed-phrase sample (`"Hello. This is the <voice> voice."`, SamplePlayer.swift:55) via GET /synthesize; double-click or right-click sets the default/preferred voice (`preferredVoice` in UserDefaults).
+- **Mute/Unmute** toggle (PopoverView): mirrors the `/tmp/afterwords-muted` sentinel file via `CLIExecutor.toggleMute()` — the server honours the file's presence; the app never touches audio routing. `HealthMonitor` refreshes `isMuted` from the file on every poll, and toggle failures surface through `lastError`.
 - **Settings**: Launch at Login, Auto-start Server, Automatically check for updates, CLI path override, server port (port is UI-only — see Key design decisions).
 - **Sparkle 2 auto-updates** via an EdDSA-signed appcast. Distribution today is an unsigned, un-notarized DMG (right-click > Open on first launch); auto-updates are integrity-protected by Sparkle's EdDSA signature.
 
