@@ -93,6 +93,27 @@ build_sign_hash() {
     --sig "$SIGNATURE" --length "$SIGN_LEN" --pubdate "$PUBDATE" > "$ITEM_FILE"
 }
 
+# ---- Recovery: tag pushed but 'gh release create' failed --------------------
+# The publish path pushes main+tag atomically, THEN creates the release. If
+# release creation fails (network, gh auth expiry), a re-run lands here: the
+# tag exists but there is no release to download. Recover by publishing the
+# still-local DMG — but only after verifying it against the committed SHA
+# manifest, the same trust anchor resume uses. Never publish unverifiable bytes.
+recreate_missing_release() {
+  note "Tag $TAG exists but the GitHub release is missing — recovering from local DMG"
+  [ -f "$MANIFEST" ] || die "no committed SHA manifest at $MANIFEST — cannot verify any local DMG. Delete the remote tag (git push origin :refs/tags/$TAG) and re-run the full release."
+  local expected_sha actual_sha
+  expected_sha="$(sed -n 's/^\([0-9a-f]\{64\}\) .*/\1/p' "$MANIFEST" | head -n1)"
+  [ -n "$expected_sha" ] || die "manifest $MANIFEST contains no valid SHA-256 — cannot verify any local DMG"
+  [ -f "$DMG" ] || die "no local DMG at $DMG to publish, and no release asset exists. A rebuild would produce different bytes than the committed manifest; delete the remote tag and re-run the full release to regenerate both together."
+  actual_sha="$(shasum -a 256 "$DMG" | awk '{print $1}')"
+  [ "$actual_sha" = "$expected_sha" ] || die "local DMG SHA-256 ($actual_sha) does not match the committed manifest $MANIFEST ($expected_sha) — refusing to publish unverifiable bytes"
+  gh release create "$TAG" "$DMG" \
+    --title "Afterwords $APP_VERSION" \
+    --notes "$(printf 'Afterwords %s\n\n---\n**Verify your download** (the DMG is unsigned/un-notarized):\n\n```\nshasum -a 256 Afterwords.dmg\n```\nExpected: `%s`\n' "$APP_VERSION" "$actual_sha")"
+  note "Release $TAG recreated from verified local DMG"
+}
+
 # ---- Resume: reuse already-published bytes (never rebuild) ------------------
 resume_from_published() {
   note "Tag $TAG and release already exist — resuming from published bytes"
@@ -157,6 +178,7 @@ main() {
 
   if git ls-remote --exit-code --tags origin "$TAG" >/dev/null 2>&1; then
     [ "$PUBLISH" = "1" ] || die "tag $TAG already exists — re-run with PUBLISH=1 to resume"
+    gh release view "$TAG" >/dev/null 2>&1 || recreate_missing_release
     resume_from_published
     publish_appcast
     return
