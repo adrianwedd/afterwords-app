@@ -99,4 +99,16 @@ final class SamplePlayerTests: XCTestCase {
         XCTAssertEqual(player.playingVoice, "picard",
             "A second playSample must replace the in-flight playingVoice")
     }
+
+    func testSampleSessionHasBoundedTimeouts() {
+        // A hung /synthesize (connection accepted, no bytes) must not hold the
+        // spinner for URLSession.shared's default 60s idle timeout, and the
+        // whole fetch must have a hard ceiling. Mirrors HealthMonitor's
+        // dedicated-session pattern with a looser budget (synthesis is slow
+        // on first use while the model loads).
+        let config = SamplePlayer.session.configuration
+        XCTAssertEqual(config.timeoutIntervalForRequest, 15)
+        XCTAssertEqual(config.timeoutIntervalForResource, 60)
+        XCTAssertFalse(config.waitsForConnectivity)
+    }
 }

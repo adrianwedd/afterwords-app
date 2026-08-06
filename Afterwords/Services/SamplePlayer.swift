@@ -39,6 +39,19 @@ final class SamplePlayer: NSObject, ObservableObject {
     /// fetchAndPlay only mutates state if its captured token still matches.
     private var latestToken: UInt64 = 0
 
+    /// Dedicated session so a hung /synthesize (connection accepted, nothing
+    /// sent) can't pin the spinner for URLSession.shared's default 60s idle
+    /// timeout. Looser than HealthMonitor's 3s budget: synthesis legitimately
+    /// takes seconds, especially while the model warms up. `internal` for the
+    /// config assertion in SamplePlayerTests.
+    static let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 15
+        config.timeoutIntervalForResource = 60
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
+
     init(cliExecutor: CLIExecutor) {
         self.cliExecutor = cliExecutor
         super.init()
@@ -96,7 +109,7 @@ final class SamplePlayer: NSObject, ObservableObject {
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await URLSession.shared.data(from: url)
+            (data, response) = try await Self.session.data(from: url)
         } catch {
             await applyIfCurrent(token) {
                 self.playingVoice = nil
