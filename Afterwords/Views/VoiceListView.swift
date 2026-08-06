@@ -55,6 +55,7 @@ struct VoiceListView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
             }
         }
         .padding(10)
@@ -138,6 +139,9 @@ struct VoiceListView: View {
             }
             .buttonStyle(.plain)
             .contentShape(Rectangle().size(CGSize(width: 28, height: 28)))
+            .accessibilityLabel(isDefault
+                ? "Clear default voice \(voice)"
+                : "Set \(voice) as default voice")
         }
         .frame(height: 34)
     }
