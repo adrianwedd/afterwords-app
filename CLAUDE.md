@@ -96,3 +96,5 @@ This is the complete feature set an assistant editing views may touch. Do not ad
 - **Voices window**: flat alphabetical list with a search box. Single-click plays a fixed-phrase sample (`"Hello. This is the <voice> voice."`, SamplePlayer.swift:55) via GET /synthesize; double-click or right-click sets the default/preferred voice (`preferredVoice` in UserDefaults).
 - **Settings**: Launch at Login, Auto-start Server, Automatically check for updates, CLI path override, server port (port is UI-only — see Key design decisions).
 - **Sparkle 2 auto-updates** via an EdDSA-signed appcast. Distribution today is an unsigned, un-notarized DMG (right-click > Open on first launch); auto-updates are integrity-protected by Sparkle's EdDSA signature.
+
+Read STRATEGY.md before any task. It overrides your judgment. Conflicts with reality are escalations.
