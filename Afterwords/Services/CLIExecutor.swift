@@ -162,9 +162,16 @@ final class CLIExecutor: ObservableObject {
 
     // MARK: - Server Lifecycle Commands
 
-    func startServer() { run(["start"], timeout: 30) }
-    func stopServer() { run(["stop"], timeout: 10) }
-    func restartServer() { run(["restart"], timeout: 30) }
+    /// Each lifecycle command returns whether the launch was ACCEPTED — the
+    /// CLI path passed validation and a process spawn was attempted. It is NOT
+    /// proof the command succeeded (that remains fire-and-forget; /health
+    /// polling is the single source of truth). Callers use the return value to
+    /// avoid flipping HealthMonitor into a .starting/.stopped state that no
+    /// process could ever satisfy — a refused Start used to strand the UI in
+    /// "Starting…" for the full 90s timeout.
+    @discardableResult func startServer() -> Bool { run(["start"], timeout: 30) }
+    @discardableResult func stopServer() -> Bool { run(["stop"], timeout: 10) }
+    @discardableResult func restartServer() -> Bool { run(["restart"], timeout: 30) }
     func openLogs() {
         lastError = nil
         let logPath = "/tmp/claude-tts-server.log"
@@ -181,14 +188,16 @@ final class CLIExecutor: ObservableObject {
 
     // MARK: - Execution
 
-    private func run(_ arguments: [String], timeout: TimeInterval = 30) {
-        guard !isExecuting else { return }
+    /// Returns true if the command was accepted (validated + spawn attempted),
+    /// false if it was refused (busy, or CLI path validation failed).
+    private func run(_ arguments: [String], timeout: TimeInterval = 30) -> Bool {
+        guard !isExecuting else { return false }
         lastError = nil
 
         let cliPath = resolvedCLIPath
         if let validationError = Self.validationError(forCLIPath: cliPath) {
             lastError = validationError
-            return
+            return false
         }
 
         isExecuting = true
@@ -244,5 +253,6 @@ final class CLIExecutor: ObservableObject {
                 }
             }
         }
+        return true
     }
 }

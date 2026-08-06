@@ -71,8 +71,12 @@ struct PopoverView: View {
             if running || starting {
                 Button {
                     guard !busy else { return }
-                    cliExecutor.stopServer()
-                    healthMonitor.notifyStopAttempt()
+                    // Only mirror the state change if the CLI accepted the
+                    // command — a refused launch (validation error) must not
+                    // fake a transition the poll loop can never confirm.
+                    if cliExecutor.stopServer() {
+                        healthMonitor.notifyStopAttempt()
+                    }
                 } label: {
                     Label("Stop", systemImage: "stop.fill")
                         .frame(maxWidth: .infinity)
@@ -84,8 +88,9 @@ struct PopoverView: View {
             } else {
                 Button {
                     guard !busy else { return }
-                    cliExecutor.startServer()
-                    healthMonitor.notifyStartAttempt()
+                    if cliExecutor.startServer() {
+                        healthMonitor.notifyStartAttempt()
+                    }
                 } label: {
                     Label("Start", systemImage: "play.fill")
                         .frame(maxWidth: .infinity)
@@ -97,8 +102,9 @@ struct PopoverView: View {
             }
             Button {
                 guard !busy else { return }
-                cliExecutor.restartServer()
-                healthMonitor.notifyStartAttempt()
+                if cliExecutor.restartServer() {
+                    healthMonitor.notifyStartAttempt()
+                }
             } label: {
                 Label("Restart", systemImage: "arrow.clockwise")
             }

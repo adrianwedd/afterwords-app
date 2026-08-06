@@ -249,12 +249,14 @@ final class HealthMonitor: ObservableObject {
         case .stopped:
             pendingStop = false
             // On first confirmed-stopped result, honour the auto-start preference.
-            // notifyStartAttempt() before startServer() matches the manual UI path
-            // and ensures state is .starting before the fire-and-forget CLI call.
+            // startServer() runs first and gates notifyStartAttempt(): if the CLI
+            // refuses the launch (path validation), no process will ever answer
+            // the poll, so entering .starting would strand the UI there until
+            // the 90s timeout. Acceptance ≠ running — polls remain the truth.
             if !hasCompletedFirstPoll,
-               UserDefaults.standard.bool(forKey: "autoStartServer") {
+               UserDefaults.standard.bool(forKey: "autoStartServer"),
+               cliExecutor.startServer() {
                 notifyStartAttempt()
-                cliExecutor.startServer()
             }
 
         case .error:

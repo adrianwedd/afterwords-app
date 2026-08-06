@@ -96,6 +96,38 @@ final class CLIExecutorTests: XCTestCase {
     }
 
     @MainActor
+    func testStartServerReturnsFalseWhenValidationRefuses() {
+        // A refused launch must report non-acceptance so callers (PopoverView,
+        // the auto-start path) never flip HealthMonitor into a .starting state
+        // that no process can ever satisfy — the UI would sit in "Starting…"
+        // for the full 90s timeout with Stop disabled.
+        UserDefaults.standard.set("/bin/echo", forKey: "cliPathOverride")
+        defer { UserDefaults.standard.removeObject(forKey: "cliPathOverride") }
+        let executor = CLIExecutor()
+
+        XCTAssertFalse(executor.startServer(), "Refused validation must report non-acceptance")
+        XCTAssertNotNil(executor.lastError)
+    }
+
+    @MainActor
+    func testStartServerReturnsTrueForAcceptedLaunch() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let binary = dir.appendingPathComponent("afterwords")
+        try "#!/bin/sh\nexit 0\n".write(to: binary, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: binary.path
+        )
+        UserDefaults.standard.set(binary.path, forKey: "cliPathOverride")
+        defer { UserDefaults.standard.removeObject(forKey: "cliPathOverride") }
+        let executor = CLIExecutor()
+
+        XCTAssertTrue(executor.startServer(), "Valid binary must report acceptance")
+    }
+
+    @MainActor
     func testStartServerRefusesOverrideNotNamedAfterwords() async {
         // /bin/echo exists and is executable, but its basename isn't
         // `afterwords` — startServer must surface an error and never mark

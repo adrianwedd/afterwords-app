@@ -5,12 +5,24 @@ final class HealthMonitorTests: XCTestCase {
 
     var monitor: HealthMonitor!
     var executor: CLIExecutor!
+    private var stubDir: URL!
 
     @MainActor
     override func setUp() {
         super.setUp()
         UserDefaults.standard.removeObject(forKey: "serverPort")
         UserDefaults.standard.removeObject(forKey: "autoStartServer")
+        // Point the CLI at a no-op stub named `afterwords` so (a) the
+        // auto-start path's launch-acceptance gate passes deterministically
+        // in CI, where no real binary exists, and (b) tests on a dev machine
+        // never fire a real `afterwords start` as a side effect.
+        stubDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: stubDir, withIntermediateDirectories: true)
+        let stub = stubDir.appendingPathComponent("afterwords")
+        try? "#!/bin/sh\nexit 0\n".write(to: stub, atomically: true, encoding: .utf8)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: stub.path)
+        UserDefaults.standard.set(stub.path, forKey: "cliPathOverride")
         executor = CLIExecutor()
         monitor = HealthMonitor(cliExecutor: executor)
     }
@@ -19,6 +31,9 @@ final class HealthMonitorTests: XCTestCase {
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: "serverPort")
         UserDefaults.standard.removeObject(forKey: "autoStartServer")
+        UserDefaults.standard.removeObject(forKey: "cliPathOverride")
+        try? FileManager.default.removeItem(at: stubDir)
+        stubDir = nil
         monitor = nil
         executor = nil
         super.tearDown()
@@ -180,6 +195,20 @@ final class HealthMonitorTests: XCTestCase {
         monitor.simulateHealthResult(error: "connection refused") // next .stopped poll
         XCTAssertEqual(monitor.state, .stopped,
             "Auto-start must not re-arm after a .starting-path poll set hasCompletedFirstPoll")
+    }
+
+    @MainActor
+    func testAutoStartStaysStoppedWhenCLIRefused() {
+        // If CLI validation refuses the launch (e.g. a bad override), the
+        // auto-start path must NOT enter .starting — there is no process that
+        // could ever satisfy the poll, so the UI would sit in "Starting…"
+        // until the 90s timeout. It must stay .stopped with the error visible.
+        UserDefaults.standard.set(true, forKey: "autoStartServer")
+        UserDefaults.standard.set("/bin/echo", forKey: "cliPathOverride")
+        monitor.simulateHealthResult(error: "connection refused")
+        XCTAssertEqual(monitor.state, .stopped,
+            "Refused CLI validation must not strand the monitor in .starting")
+        XCTAssertNotNil(executor.lastError)
     }
 
     // MARK: - Stop/poll race
