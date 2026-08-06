@@ -211,6 +211,42 @@ final class HealthMonitorTests: XCTestCase {
         XCTAssertNotNil(executor.lastError)
     }
 
+    // MARK: - Startup timeout
+
+    @MainActor
+    func testStartupTimeoutTransitionsStartingToError() {
+        // .starting → (90s elapsed, poll still failing) → .error. Backdate the
+        // attempt past the timeout so the next failed poll trips the edge.
+        monitor.simulateStartAttempt(since: Date(timeIntervalSinceNow: -91))
+        monitor.simulateHealthResult(error: "connection refused")
+        guard case .error(let message) = monitor.state else {
+            XCTFail("Expected .error after startup timeout, got \(monitor.state)")
+            return
+        }
+        XCTAssertTrue(message.contains("90"),
+            "Timeout error should cite the 90s budget, got: \(message)")
+    }
+
+    @MainActor
+    func testStartupJustUnderTimeoutStaysStarting() {
+        // One second under the budget: a failing poll must NOT error yet.
+        monitor.simulateStartAttempt(since: Date(timeIntervalSinceNow: -89))
+        monitor.simulateHealthResult(error: "connection refused")
+        XCTAssertTrue(monitor.state.isStarting,
+            "89s elapsed is inside the 90s budget — state must remain .starting")
+    }
+
+    @MainActor
+    func testSuccessAfterLongStartupStillReachesRunning() {
+        // A slow-but-successful startup (e.g. 89s model load) must win the
+        // race: a 200 landing before any post-deadline failure poll goes
+        // straight to .running.
+        monitor.simulateStartAttempt(since: Date(timeIntervalSinceNow: -89))
+        let info = HealthInfo(status: "ok", loadedBackends: [], voices: [])
+        monitor.simulateHealthResult(info: info)
+        XCTAssertTrue(monitor.state.isRunning)
+    }
+
     // MARK: - Stop/poll race
 
     @MainActor

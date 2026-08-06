@@ -123,6 +123,17 @@ final class HealthMonitor: ObservableObject {
     func simulateHealthResponse(data: Data?, response: URLResponse?, error: Error?) {
         handleHealthResponse(data: data, response: response, error: error)
     }
+
+    /// Enter .starting with a backdated attempt time so tests can exercise
+    /// the 90s startup-timeout edge without waiting. Mirrors
+    /// notifyStartAttempt() exactly except for the injected date.
+    /// For unit tests only.
+    func simulateStartAttempt(since date: Date) {
+        pendingStop = false
+        startAttemptDate = date
+        state = .starting(since: date)
+        consecutiveFailures = 0
+    }
     #endif
 
     // MARK: - Polling
