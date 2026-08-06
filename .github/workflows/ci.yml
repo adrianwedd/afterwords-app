@@ -34,6 +34,18 @@ jobs:
       - name: Generate project
         run: make project
 
+      # The generated .xcodeproj is committed (developers open it without
+      # XcodeGen). If regeneration changes it, someone edited project.yml
+      # without running `make project` — or hand-edited project.pbxproj.
+      # Fail loudly instead of shipping a project that silently diverges
+      # from its source of truth.
+      - name: Verify committed project matches project.yml
+        run: |
+          git diff --exit-code -- Afterwords.xcodeproj/project.pbxproj || {
+            echo "ERROR: project.pbxproj is stale. Run 'make project' and commit the result."
+            exit 1
+          }
+
       - name: Build
         run: make build
 
