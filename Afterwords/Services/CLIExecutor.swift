@@ -188,6 +188,16 @@ final class CLIExecutor: ObservableObject {
 
     // MARK: - Execution
 
+    #if DEBUG
+    /// Test seam: drive run() with a custom timeout. Unit tests use this to
+    /// exercise subprocess behavior (e.g. pipe-buffer pressure) without the
+    /// 10–30s production timeouts. Not compiled into release builds.
+    @discardableResult
+    func testRun(_ arguments: [String], timeout: TimeInterval) -> Bool {
+        run(arguments, timeout: timeout)
+    }
+    #endif
+
     /// Returns true if the command was accepted (validated + spawn attempted),
     /// false if it was refused (busy, or CLI path validation failed).
     private func run(_ arguments: [String], timeout: TimeInterval = 30) -> Bool {
@@ -228,11 +238,19 @@ final class CLIExecutor: ObservableObject {
                     didTimeout.withLock { $0 = true }
                     process.terminate()
                 }
+                // Drain both pipes WHILE the process runs. A pipe buffer holds
+                // ~64KB; a verbose CLI that fills it blocks on write and never
+                // exits, so draining only after waitUntilExit() would stall
+                // every such command until the watchdog kills it and reports a
+                // bogus timeout.
+                async let stdoutData = Self.drain(stdout.fileHandleForReading)
+                async let stderrData = Self.drain(stderr.fileHandleForReading)
+
                 process.waitUntilExit()
                 watchdog.cancel()
 
-                let _ = String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                let errorOutput = String(data: stderr.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                _ = await stdoutData
+                let errorOutput = String(data: await stderrData, encoding: .utf8) ?? ""
 
                 await MainActor.run {
                     self.isExecuting = false
@@ -254,5 +272,16 @@ final class CLIExecutor: ObservableObject {
             }
         }
         return true
+    }
+
+    /// Read a pipe to EOF off the calling thread. `readDataToEndOfFile()` is
+    /// blocking, so it runs on a global queue; the caller awaits both pipes
+    /// concurrently while waitUntilExit() blocks the detached task's thread.
+    nonisolated private static func drain(_ handle: FileHandle) async -> Data {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                continuation.resume(returning: handle.readDataToEndOfFile())
+            }
+        }
     }
 }

@@ -143,6 +143,50 @@ final class CLIExecutorTests: XCTestCase {
         XCTAssertFalse(executor.isExecuting, "Refused command must not leave isExecuting true")
     }
 
+    // MARK: - Pipe pressure
+
+    @MainActor
+    func testVerboseCommandOutputDoesNotStallUntilTimeout() async throws {
+        // A CLI emitting more than the ~64KB pipe buffer used to block on
+        // write while run() waited in waitUntilExit() before draining the
+        // pipes — the watchdog then killed it and reported a bogus timeout.
+        // 256KB on each stream must complete promptly with no error.
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let binary = dir.appendingPathComponent("afterwords")
+        let script = """
+        #!/bin/sh
+        i=0
+        while [ $i -lt 64 ]; do
+            head -c 4096 /dev/zero | tr '\\0' 'x'
+            head -c 4096 /dev/zero | tr '\\0' 'y' 1>&2
+            i=$((i+1))
+        done
+        exit 0
+        """
+        try script.write(to: binary, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: binary.path
+        )
+        UserDefaults.standard.set(binary.path, forKey: "cliPathOverride")
+        defer { UserDefaults.standard.removeObject(forKey: "cliPathOverride") }
+        let executor = CLIExecutor()
+
+        XCTAssertTrue(executor.testRun(["start"], timeout: 5))
+
+        // Poll for completion well under the 5s watchdog: the script itself
+        // finishes in well under a second once the pipes are being drained.
+        for _ in 0..<40 where executor.isExecuting {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+
+        XCTAssertFalse(executor.isExecuting, "Verbose command should finish, not stall")
+        XCTAssertNil(executor.lastError,
+            "256KB of output must not surface as a timeout: \(executor.lastError ?? "")")
+    }
+
     // MARK: - Port
 
     @MainActor
