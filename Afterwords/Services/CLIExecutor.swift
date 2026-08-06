@@ -147,6 +147,7 @@ final class CLIExecutor: ObservableObject {
     // MARK: - Mute
 
     func toggleMute() {
+        lastError = nil
         if isMuted {
             do {
                 try FileManager.default.removeItem(atPath: muteFilePath)

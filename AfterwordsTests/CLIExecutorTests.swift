@@ -242,4 +242,27 @@ final class CLIExecutorTests: XCTestCase {
         executor.setPort(-1)
         XCTAssertEqual(executor.port, 1024, "Negative port should clamp to lower bound 1024")
     }
+
+    // MARK: - Mute Toggle
+
+    @MainActor
+    func testSuccessfulMuteToggleClearsStaleError() {
+        // A failed toggle sets lastError; a later successful toggle must clear
+        // it, or the popover keeps showing the stale failure indefinitely.
+        let mutePath = "/tmp/afterwords-muted"
+        let wasMuted = FileManager.default.fileExists(atPath: mutePath)
+        defer {
+            // Restore the machine's real mute state — the sentinel is shared.
+            if wasMuted {
+                FileManager.default.createFile(atPath: mutePath, contents: nil)
+            } else {
+                try? FileManager.default.removeItem(atPath: mutePath)
+            }
+        }
+
+        let executor = CLIExecutor()
+        executor.lastError = "Could not mute: earlier failure"
+        executor.toggleMute()
+        XCTAssertNil(executor.lastError, "A successful toggle should clear the previous error")
+    }
 }
