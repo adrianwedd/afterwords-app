@@ -8,3 +8,7 @@ DerivedData/
 
 # Ad-hoc screenshot artifacts from local QA runs
 screen_*.png
+
+# Python caches
+__pycache__/
+.pytest_cache/
