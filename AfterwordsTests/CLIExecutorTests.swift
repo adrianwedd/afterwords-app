@@ -143,6 +143,34 @@ final class CLIExecutorTests: XCTestCase {
         XCTAssertFalse(executor.isExecuting, "Refused command must not leave isExecuting true")
     }
 
+    @MainActor
+    func testStartServerReturnsFalseWhenSpawnFails() throws {
+        // Path validation only checks the executable bit — a file that passes
+        // validation can still fail to spawn (ENOEXEC here; in production, a
+        // TOCTOU where the binary is replaced between validation and spawn).
+        // Acceptance must reflect the spawn result, or callers flip
+        // HealthMonitor into a .starting state no process can ever satisfy
+        // and the UI rides the full 90s startup timeout.
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let binary = dir.appendingPathComponent("afterwords")
+        // No shebang, not Mach-O: executable bit passes validation but
+        // posix_spawn fails with "Exec format error".
+        try "not an executable format\n".write(to: binary, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: binary.path
+        )
+        UserDefaults.standard.set(binary.path, forKey: "cliPathOverride")
+        defer { UserDefaults.standard.removeObject(forKey: "cliPathOverride") }
+        let executor = CLIExecutor()
+
+        XCTAssertFalse(executor.startServer(), "A failed spawn must report non-acceptance")
+        XCTAssertNotNil(executor.lastError)
+        XCTAssertFalse(executor.isExecuting, "A failed spawn must not leave isExecuting true")
+    }
+
     // MARK: - Pipe pressure
 
     @MainActor

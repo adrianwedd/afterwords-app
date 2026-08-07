@@ -172,12 +172,12 @@ final class CLIExecutor: ObservableObject {
     // MARK: - Server Lifecycle Commands
 
     /// Each lifecycle command returns whether the launch was ACCEPTED — the
-    /// CLI path passed validation and a process spawn was attempted. It is NOT
-    /// proof the command succeeded (that remains fire-and-forget; /health
+    /// CLI path passed validation and the process spawned. It is NOT proof
+    /// the command succeeded (the CLI's exit remains fire-and-forget; /health
     /// polling is the single source of truth). Callers use the return value to
     /// avoid flipping HealthMonitor into a .starting/.stopped state that no
-    /// process could ever satisfy — a refused Start used to strand the UI in
-    /// "Starting…" for the full 90s timeout.
+    /// process could ever satisfy — a refused or failed-to-spawn Start used to
+    /// strand the UI in "Starting…" for the full 90s timeout.
     @discardableResult func startServer() -> Bool { run(["start"], timeout: 30) }
     @discardableResult func stopServer() -> Bool { run(["stop"], timeout: 10) }
     @discardableResult func restartServer() -> Bool { run(["restart"], timeout: 30) }
@@ -207,8 +207,11 @@ final class CLIExecutor: ObservableObject {
     }
     #endif
 
-    /// Returns true if the command was accepted (validated + spawn attempted),
-    /// false if it was refused (busy, or CLI path validation failed).
+    /// Returns true if the command was accepted (validated + spawned),
+    /// false if it was refused (busy, CLI path validation failed, or the
+    /// spawn itself failed). The spawn happens synchronously — posix_spawn
+    /// is sub-millisecond — so acceptance means a live process exists;
+    /// only exit monitoring is fire-and-forget.
     private func run(_ arguments: [String], timeout: TimeInterval = 30) -> Bool {
         guard !isExecuting else { return false }
         lastError = nil
@@ -219,64 +222,66 @@ final class CLIExecutor: ObservableObject {
             return false
         }
 
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: cliPath)
+        process.arguments = arguments
+
+        // Inject PATH — GUI apps don't inherit shell PATH
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = resolvedPATH
+        process.environment = env
+
+        let stdout = Pipe()
+        let stderr = Pipe()
+        process.standardOutput = stdout
+        process.standardError = stderr
+
+        // Spawn before returning: validation can pass yet the spawn still
+        // fail (binary replaced or perms lost in between). Reporting that as
+        // accepted would flip HealthMonitor into a .starting state no process
+        // can ever satisfy, stranding the UI until the 90s startup timeout.
+        do {
+            try process.run()
+        } catch {
+            lastError = "Failed to run afterwords: \(error.localizedDescription)"
+            return false
+        }
+
         isExecuting = true
 
-        Task.detached { [cliPath, path = resolvedPATH] in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: cliPath)
-            process.arguments = arguments
+        Task.detached {
+            // Kill the subprocess after the deadline so isExecuting can never stay true forever.
+            // OSAllocatedUnfairLock provides safe cross-Task signalling without a data race.
+            let didTimeout = OSAllocatedUnfairLock(initialState: false)
+            let watchdog = Task { [process] in
+                try await Task.sleep(for: .seconds(timeout))
+                didTimeout.withLock { $0 = true }
+                process.terminate()
+            }
+            // Drain both pipes WHILE the process runs. A pipe buffer holds
+            // ~64KB; a verbose CLI that fills it blocks on write and never
+            // exits, so draining only after waitUntilExit() would stall
+            // every such command until the watchdog kills it and reports a
+            // bogus timeout.
+            async let stdoutData = Self.drain(stdout.fileHandleForReading)
+            async let stderrData = Self.drain(stderr.fileHandleForReading)
 
-            // Inject PATH — GUI apps don't inherit shell PATH
-            var env = ProcessInfo.processInfo.environment
-            env["PATH"] = path
-            process.environment = env
+            process.waitUntilExit()
+            watchdog.cancel()
 
-            let stdout = Pipe()
-            let stderr = Pipe()
-            process.standardOutput = stdout
-            process.standardError = stderr
+            _ = await stdoutData
+            let errorOutput = String(data: await stderrData, encoding: .utf8) ?? ""
 
-            do {
-                try process.run()
-
-                // Kill the subprocess after the deadline so isExecuting can never stay true forever.
-                // OSAllocatedUnfairLock provides safe cross-Task signalling without a data race.
-                let didTimeout = OSAllocatedUnfairLock(initialState: false)
-                let watchdog = Task { [process] in
-                    try await Task.sleep(for: .seconds(timeout))
-                    didTimeout.withLock { $0 = true }
-                    process.terminate()
-                }
-                // Drain both pipes WHILE the process runs. A pipe buffer holds
-                // ~64KB; a verbose CLI that fills it blocks on write and never
-                // exits, so draining only after waitUntilExit() would stall
-                // every such command until the watchdog kills it and reports a
-                // bogus timeout.
-                async let stdoutData = Self.drain(stdout.fileHandleForReading)
-                async let stderrData = Self.drain(stderr.fileHandleForReading)
-
-                process.waitUntilExit()
-                watchdog.cancel()
-
-                _ = await stdoutData
-                let errorOutput = String(data: await stderrData, encoding: .utf8) ?? ""
-
-                await MainActor.run {
-                    self.isExecuting = false
-                    if didTimeout.withLock({ $0 }) && process.terminationStatus != 0 {
-                        // terminationStatus != 0 guards against the narrow race where the watchdog
-                        // sets didTimeout just before the process exits cleanly (status 0).
-                        self.lastError = "Command timed out after \(Int(timeout))s"
-                    } else if process.terminationStatus != 0 {
-                        self.lastError = errorOutput.isEmpty
-                            ? "Command failed with exit code \(process.terminationStatus)"
-                            : errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    self.isExecuting = false
-                    self.lastError = "Failed to run afterwords: \(error.localizedDescription)"
+            await MainActor.run {
+                self.isExecuting = false
+                if didTimeout.withLock({ $0 }) && process.terminationStatus != 0 {
+                    // terminationStatus != 0 guards against the narrow race where the watchdog
+                    // sets didTimeout just before the process exits cleanly (status 0).
+                    self.lastError = "Command timed out after \(Int(timeout))s"
+                } else if process.terminationStatus != 0 {
+                    self.lastError = errorOutput.isEmpty
+                        ? "Command failed with exit code \(process.terminationStatus)"
+                        : errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
                 }
             }
         }
