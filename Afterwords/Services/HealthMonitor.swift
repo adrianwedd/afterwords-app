@@ -53,18 +53,25 @@ final class HealthMonitor: ObservableObject {
     /// user-requested .stopped state and triggering a false crash error.
     private var pendingStop = false
 
-    /// Dedicated URLSession so the short per-request timeout doesn't affect
-    /// any other code path that happens to use URLSession.shared.
-    private let session: URLSession = {
+    /// Dedicated URLSessionConfiguration so the short per-request timeout doesn't
+    /// affect any other code path that happens to use URLSession.shared. Passed to
+    /// `BoundedTransfer`, which builds a per-transfer session from it, so the
+    /// timeouts below are the transfer's timeouts.
+    private var sessionConfiguration: URLSessionConfiguration
+
+    /// Non-settable mirror of the poll timeouts, so `make test` can assert the
+    /// 3s budget still applies.
+    static let defaultSessionConfiguration: URLSessionConfiguration = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 3.0
         config.timeoutIntervalForResource = 3.0
         config.waitsForConnectivity = false
-        return URLSession(configuration: config)
+        return config
     }()
 
     init(cliExecutor: CLIExecutor) {
         self.cliExecutor = cliExecutor
+        self.sessionConfiguration = HealthMonitor.defaultSessionConfiguration
     }
 
     deinit {
@@ -124,6 +131,14 @@ final class HealthMonitor: ObservableObject {
         handleHealthResponse(data: data, response: response, error: error)
     }
 
+    /// Test seam: install a poll session configuration carrying a mock
+    /// `URLProtocol`, so a test can drive a real (offline) poll through
+    /// `checkHealth()` without touching the network.
+    var sessionConfigurationForTesting: URLSessionConfiguration {
+        get { sessionConfiguration }
+        set { sessionConfiguration = newValue }
+    }
+
     /// Enter .starting with a backdated attempt time so tests can exercise
     /// the 90s startup-timeout edge without waiting. Mirrors
     /// notifyStartAttempt() exactly except for the injected date.
@@ -180,16 +195,40 @@ final class HealthMonitor: ObservableObject {
         request.timeoutInterval = requestTimeout
         pollInFlight = true
 
-        let task = session.dataTask(with: request) { [weak self] data, response, error in
-            Task { @MainActor in
-                guard let self else { return }
-                self.pollInFlight = false
-                self.cliExecutor.refreshMuteState()
-                self.handleHealthResponse(data: data, response: response, error: error)
-                self.scheduleNextPoll()
+        fetchHealth(request: request)
+    }
+
+    /// Read `/health` through the bounded reader (issue #9) and hand the result
+    /// to the existing response handler. The poll bookkeeping is unchanged: the
+    /// single completion point below clears `pollInFlight` and reschedules, so a
+    /// poll never overlaps with the next one.
+    private func fetchHealth(request: URLRequest) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let data: Data?
+            let response: URLResponse?
+            let failure: Error?
+            do {
+                let result = try await BoundedTransfer.fetch(request,
+                                                             limit: ResponseLimit.health,
+                                                             configuration: self.sessionConfiguration)
+                data = result.data
+                response = result.response
+                failure = nil
+            } catch {
+                // Everything that can go wrong — transport failure, timeout,
+                // cancellation, HTTP status, or the byte cap — reaches
+                // handleHealthResponse as a failure, exactly as before.
+                data = nil
+                response = nil
+                failure = error
             }
+
+            self.pollInFlight = false
+            self.cliExecutor.refreshMuteState()
+            self.handleHealthResponse(data: data, response: response, error: failure)
+            self.scheduleNextPoll()
         }
-        task.resume()
     }
 
     private func handleHealthResponse(data: Data?, response: URLResponse?, error: Error?) {
