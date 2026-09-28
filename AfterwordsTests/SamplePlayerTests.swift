@@ -11,6 +11,9 @@ final class SamplePlayerTests: XCTestCase {
         defer { UserDefaults.standard.removeObject(forKey: "serverPort") }
         let executor = CLIExecutor()
         let player = SamplePlayer(cliExecutor: executor)
+        // Offline: any background fetch this test triggers must not reach the
+        // network (issue #9 made playSample's fetch use this configuration).
+        player.fetchConfiguration = MockHTTPProtocol.configuration()
 
         let url = try XCTUnwrap(player.synthesizeURL(text: "hello", voice: "galadriel"))
         XCTAssertEqual(url.scheme, "http")
@@ -31,6 +34,9 @@ final class SamplePlayerTests: XCTestCase {
         defer { UserDefaults.standard.removeObject(forKey: "serverPort") }
         let executor = CLIExecutor()
         let player = SamplePlayer(cliExecutor: executor)
+        // Offline: any background fetch this test triggers must not reach the
+        // network (issue #9 made playSample's fetch use this configuration).
+        player.fetchConfiguration = MockHTTPProtocol.configuration()
 
         executor.setPort(8080)
         let url = try XCTUnwrap(player.synthesizeURL(text: "x", voice: "y"))
@@ -43,6 +49,9 @@ final class SamplePlayerTests: XCTestCase {
         defer { UserDefaults.standard.removeObject(forKey: "serverPort") }
         let executor = CLIExecutor()
         let player = SamplePlayer(cliExecutor: executor)
+        // Offline: any background fetch this test triggers must not reach the
+        // network (issue #9 made playSample's fetch use this configuration).
+        player.fetchConfiguration = MockHTTPProtocol.configuration()
 
         // Text containing characters that must be percent-encoded in a query.
         let url = try XCTUnwrap(player.synthesizeURL(
@@ -64,6 +73,9 @@ final class SamplePlayerTests: XCTestCase {
         defer { UserDefaults.standard.removeObject(forKey: "serverPort") }
         let executor = CLIExecutor()
         let player = SamplePlayer(cliExecutor: executor)
+        // Offline: any background fetch this test triggers must not reach the
+        // network (issue #9 made playSample's fetch use this configuration).
+        player.fetchConfiguration = MockHTTPProtocol.configuration()
         XCTAssertNil(player.playingVoice)
         XCTAssertNil(player.lastError)
     }
@@ -76,6 +88,9 @@ final class SamplePlayerTests: XCTestCase {
         defer { UserDefaults.standard.removeObject(forKey: "serverPort") }
         let executor = CLIExecutor()
         let player = SamplePlayer(cliExecutor: executor)
+        // Offline: any background fetch this test triggers must not reach the
+        // network (issue #9 made playSample's fetch use this configuration).
+        player.fetchConfiguration = MockHTTPProtocol.configuration()
 
         // playSample sets playingVoice immediately (the async fetch happens
         // off-thread; we test only the synchronous state mutation here).
@@ -92,6 +107,9 @@ final class SamplePlayerTests: XCTestCase {
         defer { UserDefaults.standard.removeObject(forKey: "serverPort") }
         let executor = CLIExecutor()
         let player = SamplePlayer(cliExecutor: executor)
+        // Offline: any background fetch this test triggers must not reach the
+        // network (issue #9 made playSample's fetch use this configuration).
+        player.fetchConfiguration = MockHTTPProtocol.configuration()
 
         player.playSample(voice: "galadriel")
         XCTAssertEqual(player.playingVoice, "galadriel")
@@ -103,10 +121,9 @@ final class SamplePlayerTests: XCTestCase {
     func testSampleSessionHasBoundedTimeouts() {
         // A hung /synthesize (connection accepted, no bytes) must not hold the
         // spinner for URLSession.shared's default 60s idle timeout, and the
-        // whole fetch must have a hard ceiling. Mirrors HealthMonitor's
-        // dedicated-session pattern with a looser budget (synthesis is slow
-        // on first use while the model loads).
-        let config = SamplePlayer.session.configuration
+        // whole fetch must have a hard ceiling. These are the timeouts handed to
+        // the bounded reader (issue #9), so they are the transfer's timeouts.
+        let config = SamplePlayer.sessionConfiguration
         XCTAssertEqual(config.timeoutIntervalForRequest, 15)
         XCTAssertEqual(config.timeoutIntervalForResource, 60)
         XCTAssertFalse(config.waitsForConnectivity)

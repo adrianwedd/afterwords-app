@@ -13,6 +13,12 @@ final class ResponseLimitTests: XCTestCase {
         XCTAssertTrue(ResponseLimit.exceeds(advertisedContentLength: -1, byteCount: limit + 1, limit: limit))
     }
 
+    func testByteCountOverLimitByOneIsRejected() {
+        // Off-by-one at the boundary: limit + 1 is the smallest rejected count.
+        XCTAssertTrue(ResponseLimit.exceeds(advertisedContentLength: -1, byteCount: 1001, limit: 1000))
+        XCTAssertFalse(ResponseLimit.exceeds(advertisedContentLength: -1, byteCount: 1000, limit: 1000))
+    }
+
     func testAdvertisedLengthOverLimitIsRejected() {
         // Advertised length over the cap is rejected even if byteCount is small.
         XCTAssertTrue(ResponseLimit.exceeds(advertisedContentLength: Int64(limit + 1), byteCount: 10, limit: limit))
