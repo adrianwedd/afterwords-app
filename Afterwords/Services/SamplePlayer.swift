@@ -38,24 +38,32 @@ final class SamplePlayer: NSObject, ObservableObject {
     /// Monotonic request token. Incremented for every playSample call;
     /// fetchAndPlay only mutates state if its captured token still matches.
     private var latestToken: UInt64 = 0
+    private var fetchTask: Task<Void, Never>?
 
-    /// Dedicated session so a hung /synthesize (connection accepted, nothing
-    /// sent) can't pin the spinner for URLSession.shared's default 60s idle
-    /// timeout. Looser than HealthMonitor's 3s budget: synthesis legitimately
-    /// takes seconds, especially while the model warms up. `internal` for the
-    /// config assertion in SamplePlayerTests.
-    static let session: URLSession = {
+    /// Configuration for the bounded sample fetch. Passed to `BoundedTransfer`,
+    /// which builds a per-transfer session from it, so the timeouts below are the
+    /// transfer's timeouts. `internal` for the config assertion in
+    /// SamplePlayerTests.
+    static let sessionConfiguration: URLSessionConfiguration = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 15
         config.timeoutIntervalForResource = 60
         config.waitsForConnectivity = false
-        return URLSession(configuration: config)
+        return config
     }()
 
     init(cliExecutor: CLIExecutor) {
         self.cliExecutor = cliExecutor
         super.init()
     }
+
+    #if DEBUG
+    /// Test seam: configuration used for sample fetches. Tests install one
+    /// carrying a mock `URLProtocol`, so no test ever opens a socket.
+    var fetchConfiguration: URLSessionConfiguration = SamplePlayer.sessionConfiguration
+    #else
+    private let fetchConfiguration: URLSessionConfiguration = SamplePlayer.sessionConfiguration
+    #endif
 
     /// Synthesize a fixed phrase with the named voice and play it.
     func playSample(voice: String) {
@@ -74,7 +82,7 @@ final class SamplePlayer: NSObject, ObservableObject {
         playingVoice = voice
         lastError = nil
 
-        Task { [weak self] in
+        fetchTask = Task { [weak self] in
             guard let self else { return }
             await self.fetchAndPlay(url: url, voice: voice, token: myToken)
         }
@@ -82,6 +90,8 @@ final class SamplePlayer: NSObject, ObservableObject {
 
     /// Halt the currently-playing sound. Safe to call from .onDisappear.
     func stopPlayback() {
+        fetchTask?.cancel()
+        fetchTask = nil
         currentSound?.stop()
         currentSound = nil
         // Invalidate any in-flight token so the resuming task won't mutate
@@ -106,10 +116,36 @@ final class SamplePlayer: NSObject, ObservableObject {
     }
 
     private func fetchAndPlay(url: URL, voice: String, token: UInt64) async {
-        let data: Data
-        let response: URLResponse
+        defer {
+            if token == latestToken { fetchTask = nil }
+        }
+        let body: Data
         do {
-            (data, response) = try await Self.session.data(from: url)
+            // Bounded read (issue #9): the transfer is aborted as soon as the
+            // /synthesize response crosses the sample cap, instead of buffering
+            // the whole body and rejecting it afterwards. The 200 check moved
+            // into the reader so a non-200 body is never transferred.
+            let result = try await BoundedTransfer.fetch(URLRequest(url: url),
+                                                          limit: ResponseLimit.sample,
+                                                          configuration: fetchConfiguration)
+            body = result.data
+        } catch let error as BoundedTransferError {
+            // A newer click or stopPlayback() already won — drop everything and
+            // leave the state to the newer request (unchanged semantics).
+            guard token == latestToken else { return }
+            await applyIfCurrent(token) {
+                self.playingVoice = nil
+                switch error {
+                case .httpStatus(let code):  self.lastError = self.humanReadable(status: code)
+                case .cancelled:             self.lastError = nil
+                case .nonHTTPResponse:       self.lastError = error.localizedDescription
+                case .advertisedLengthOverCap, .receivedBytesOverCap:
+                    self.lastError = "Server response too large to play."
+                case .transport:
+                    self.lastError = error.localizedDescription
+                }
+            }
+            return
         } catch {
             await applyIfCurrent(token) {
                 self.playingVoice = nil
@@ -121,34 +157,7 @@ final class SamplePlayer: NSObject, ObservableObject {
         // If a newer click superseded us, drop everything.
         guard token == latestToken else { return }
 
-        guard let httpResponse = response as? HTTPURLResponse else {
-            await applyIfCurrent(token) {
-                self.playingVoice = nil
-                self.lastError = "No HTTP response"
-            }
-            return
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let message = humanReadable(status: httpResponse.statusCode)
-            await applyIfCurrent(token) {
-                self.playingVoice = nil
-                self.lastError = message
-            }
-            return
-        }
-
-        if ResponseLimit.exceeds(advertisedContentLength: httpResponse.expectedContentLength,
-                                 byteCount: data.count,
-                                 limit: ResponseLimit.sample) {
-            await applyIfCurrent(token) {
-                self.playingVoice = nil
-                self.lastError = "Server response too large to play."
-            }
-            return
-        }
-
-        guard let sound = NSSound(data: data) else {
+        guard let sound = NSSound(data: body) else {
             await applyIfCurrent(token) {
                 self.playingVoice = nil
                 self.lastError = "Could not decode WAV from server"
